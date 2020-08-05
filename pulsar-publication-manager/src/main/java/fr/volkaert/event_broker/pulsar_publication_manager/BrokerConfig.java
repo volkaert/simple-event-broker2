@@ -1,0 +1,40 @@
+package fr.volkaert.event_broker.pulsar_publication_manager;
+
+import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@ConfigurationProperties(prefix = "broker")
+@Data
+public class BrokerConfig {
+
+    private String pulsarServiceUrl;
+
+    private String componentTypeName;   // Useful for metrics (to group them by component type)
+    private String componentInstanceId; // Useful for metrics (to distinguish instances of the same component type)
+
+    private long defaultTimeToLiveInSeconds;
+    private long maxTimeToLiveInSeconds;
+    private long rejectingThresholdPerPublicationCode;
+    private long throttlingThresholdPerPublicationCode;
+    private long warningThresholdPerPublicationCode;
+    private long pauseInMillisecondsForThrottling;
+    private long maxAlertsInMemory;
+    private long maxSevereAlertsInMemory;
+    private long maxCriticalAlertsInMemory;
+
+    private String catalogFile;
+
+    private long webhookConnectTimeoutInSeconds;
+    private long webhookReadTimeoutInSeconds;
+
+    private long defaultTimeToLiveInSecondsForWebhookConnectionError;
+    private long defaultTimeToLiveInSecondsForWebhookReadTimeoutError;
+    private long defaultTimeToLiveInSecondsForWebhookServer5xxError;
+    private long defaultTimeToLiveInSecondsForWebhookClient4xxError;
+
+    private long maxRetryBackoffInSeconds;
+
+    private int defaultShutdownTimeoutInSeconds;
+}
