@@ -16,25 +16,4 @@ public class BrokerConfig {
 
     private long defaultTimeToLiveInSeconds;
     private long maxTimeToLiveInSeconds;
-    private long rejectingThresholdPerPublicationCode;
-    private long throttlingThresholdPerPublicationCode;
-    private long warningThresholdPerPublicationCode;
-    private long pauseInMillisecondsForThrottling;
-    private long maxAlertsInMemory;
-    private long maxSevereAlertsInMemory;
-    private long maxCriticalAlertsInMemory;
-
-    private String catalogFile;
-
-    private long webhookConnectTimeoutInSeconds;
-    private long webhookReadTimeoutInSeconds;
-
-    private long defaultTimeToLiveInSecondsForWebhookConnectionError;
-    private long defaultTimeToLiveInSecondsForWebhookReadTimeoutError;
-    private long defaultTimeToLiveInSecondsForWebhookServer5xxError;
-    private long defaultTimeToLiveInSecondsForWebhookClient4xxError;
-
-    private long maxRetryBackoffInSeconds;
-
-    private int defaultShutdownTimeoutInSeconds;
 }
