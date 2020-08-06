@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 @Service
@@ -63,13 +64,16 @@ public class SubscriptionAdapterService {
             LOGGER.debug("Returning the event {}", inflightEvent.cloneWithoutSensitiveData());
             return inflightEvent;
 
-        } catch (Exception ex) {
+        } catch (HttpClientErrorException ex) {
             String msg = String.format("Error while calling the webhook at %s. Event is %s.",
                     inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
             LOGGER.error(msg, ex);
-            HttpStatus status = (response != null ? response.getStatusCode() : HttpStatus.INTERNAL_SERVER_ERROR);
-            BrokerException bex = new BrokerException(status, ex.getMessage(), ex, inflightEvent.getWebhookUrl());
-            throw bex;
+            throw new BrokerException(ex.getStatusCode(), msg, ex, inflightEvent.getWebhookUrl());
+        } catch (Exception ex) {
+            String msg = String.format("Error while handling the call to the webhook at %s. Event is %s.",
+                    inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
+            LOGGER.error(msg, ex);
+            throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex, inflightEvent.getWebhookUrl());
         }
     }
 }

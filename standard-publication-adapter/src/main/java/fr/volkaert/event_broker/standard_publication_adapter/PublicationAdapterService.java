@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 @Service
@@ -60,13 +61,16 @@ public class PublicationAdapterService {
             LOGGER.debug("Returning the event {}", eventToPublisher);
             return eventToPublisher;
 
-        } catch (Exception ex) {
+        } catch (HttpClientErrorException ex) {
             String msg = String.format("Error while calling the Publication Manager at %s. Event is %s.",
                     publicationManagerUrl, inflightEvent.toShortLog());
             LOGGER.error(msg, ex);
-            HttpStatus status = (response != null ? response.getStatusCode() : HttpStatus.INTERNAL_SERVER_ERROR);
-            BrokerException bex = new BrokerException(status, msg, ex, publicationManagerUrl);
-            throw bex;
+            throw new BrokerException(ex.getStatusCode(), msg, ex, publicationManagerUrl);
+        } catch (Exception ex) {
+            String msg = String.format("Error while handling the call to the Publication Manager at %s. Event is %s.",
+                    publicationManagerUrl, inflightEvent.toShortLog());
+            LOGGER.error(msg, ex);
+            throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex, publicationManagerUrl);
         }
     }
 }

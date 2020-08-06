@@ -16,6 +16,7 @@ import org.springframework.http.*;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
@@ -260,13 +261,16 @@ public class SubscriptionManagerService {
             LOGGER.debug("Returning the event {}", inflightEvent.cloneWithoutSensitiveData());
             return inflightEvent;
 
-        } catch (Exception ex) {
+        } catch (HttpClientErrorException ex) {
             String msg = String.format("Error while calling the subscription adapter at %s. Event is %s.",
                     subscriptionAdapterUrl, inflightEvent.toShortLog());
             LOGGER.error(msg, ex);
-            HttpStatus status = (response != null ? response.getStatusCode() : HttpStatus.INTERNAL_SERVER_ERROR);
-            BrokerException bex = new BrokerException(status, msg, ex, subscriptionAdapterUrl);
-            throw bex;
+            throw new BrokerException(ex.getStatusCode(), msg, ex, subscriptionAdapterUrl);
+        } catch (Exception ex) {
+            String msg = String.format("Error while handling the call to the subscription adapter at %s. Event is %s.",
+                    subscriptionAdapterUrl, inflightEvent.toShortLog());
+            LOGGER.error(msg, ex);
+            throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex, subscriptionAdapterUrl);
         }
     }
 

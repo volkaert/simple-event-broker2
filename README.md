@@ -154,3 +154,8 @@ cd apache-pulsar-2.6.0
 bin/pulsar-admin topics delete --deleteSchema persistent://public/default/<topic>
 ```
 >`public` is the name of the tenant and `default` is the name of the namespace
+
+
+## Misc
+
+Online Bcrypt Hash Generator and Checker(Bcrypt Calculator): https://www.devglan.com/online-tools/bcrypt-hash-generator
