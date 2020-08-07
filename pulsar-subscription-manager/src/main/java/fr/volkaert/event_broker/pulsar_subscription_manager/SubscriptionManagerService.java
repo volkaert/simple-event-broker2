@@ -17,12 +17,14 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @Configuration
@@ -88,6 +90,7 @@ public class SubscriptionManagerService {
                         .topic(eventTypeCode)
                         .subscriptionName(subscriptionCode)
                         .subscriptionType(SubscriptionType.Failover)
+                        .ackTimeout(config.getWebhookReadTimeoutInSeconds(), TimeUnit.SECONDS)
                         .messageListener((cons, msg) ->  {
                             try {
                                 handlePulsarMessageAndAck(cons, msg);
@@ -126,6 +129,11 @@ public class SubscriptionManagerService {
 
             String subscriptionCode = consumer.getSubscription();
             inflightEvent.setSubscriptionCode(subscriptionCode);
+
+            // Strange: message.getRedeliveryCount() is alwwys 0 !!!
+            //System.out.println("\n\n\n\n\n\n*********** message.getRedeliveryCount() " + message.getRedeliveryCount() + " ***************\n\n\n\n\n\n");
+            //inflightEvent.setRedelivered(message.getRedeliveryCount() >= 1);
+            //inflightEvent.setDeliveryCount(message.getRedeliveryCount() + 1);
 
             LOGGER.debug("Event received from Pulsar. Event is {}.", inflightEvent.cloneWithoutSensitiveData());
 
@@ -188,6 +196,7 @@ public class SubscriptionManagerService {
                 return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
             }
 
+            /*
             HttpStatus httpStatusReturnedByWebhook = HttpStatus.INTERNAL_SERVER_ERROR;
             try {
                 httpStatusReturnedByWebhook = HttpStatus.valueOf(inflightEvent.getWebhookHttpStatus());
@@ -211,6 +220,7 @@ public class SubscriptionManagerService {
                         inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
                 return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
             }
+            */
 
             // If we reached this line, everything seems fine, so we can ack the message
             LOGGER.debug("Ack for message {}. Event is {}.", message.getMessageId(), inflightEvent.toShortLog());
@@ -252,25 +262,46 @@ public class SubscriptionManagerService {
             LOGGER.debug("The Subscription Adapter returned the http status code {}. Event is {}.",
                     response.getStatusCode(), inflightEvent.toShortLog());
 
+            /*
             if (! response.getStatusCode().is2xxSuccessful()) {
                 LOGGER.error("The Subscription Adapter returned the unsuccessful http status code {}. Event is {}.",
                         response.getStatusCode(), inflightEvent.toShortLog());
             }
+             */
 
             inflightEvent.setWebhookHttpStatus(response.getStatusCodeValue());
             LOGGER.debug("Returning the event {}", inflightEvent.cloneWithoutSensitiveData());
             return inflightEvent;
 
         } catch (HttpClientErrorException ex) {
-            String msg = String.format("Error while calling the subscription adapter at %s. Event is %s.",
-                    subscriptionAdapterUrl, inflightEvent.toShortLog());
+            String msg = String.format("Client error %s while calling the subscription adapter at %s. Event is %s.",
+                    ex.getStatusCode(), subscriptionAdapterUrl, inflightEvent.toShortLog());
+            LOGGER.error(msg, ex);
+            throw new BrokerException(ex.getStatusCode(), msg, ex, subscriptionAdapterUrl);
+        } catch (HttpServerErrorException ex) {
+            String msg = String.format("Server error %s while calling the subscription adapter at %s. Event is %s.",
+                    ex.getStatusCode(), subscriptionAdapterUrl, inflightEvent.toShortLog());
             LOGGER.error(msg, ex);
             throw new BrokerException(ex.getStatusCode(), msg, ex, subscriptionAdapterUrl);
         } catch (Exception ex) {
-            String msg = String.format("Error while handling the call to the subscription adapter at %s. Event is %s.",
-                    subscriptionAdapterUrl, inflightEvent.toShortLog());
-            LOGGER.error(msg, ex);
-            throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex, subscriptionAdapterUrl);
+            if (ex.getMessage().contains("Connection refused")) {
+                String msg = String.format("Connection Refused error while handling the call to the subscription adapter at %s. Event is %s.",
+                        subscriptionAdapterUrl, inflightEvent.toShortLog());
+                LOGGER.error(msg, ex);
+                throw new BrokerException(HttpStatus.BAD_GATEWAY, msg, ex, subscriptionAdapterUrl);
+            }
+            else if (ex.getMessage().contains("Read timed out")) {
+                String msg = String.format("Read Timeout error while handling the call to the subscription adapter at %s. Event is %s.",
+                        subscriptionAdapterUrl, inflightEvent.toShortLog());
+                LOGGER.error(msg, ex);
+                throw new BrokerException(HttpStatus.GATEWAY_TIMEOUT, msg, ex, subscriptionAdapterUrl);
+            }
+            else {
+                String msg = String.format("Error while handling the call to the subscription adapter at %s. Event is %s.",
+                        subscriptionAdapterUrl, inflightEvent.toShortLog());
+                LOGGER.error(msg, ex);
+                throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex, subscriptionAdapterUrl);
+            }
         }
     }
 

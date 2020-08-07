@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 @Service
@@ -55,25 +56,46 @@ public class SubscriptionAdapterService {
             LOGGER.debug("The Webhook returned the http status code {}. Event is {}.",
                     response.getStatusCode(), inflightEvent.toShortLog());
 
+            /*
             if (! response.getStatusCode().is2xxSuccessful()) {
                 LOGGER.error("The webhook returned the unsuccessful http status code {}. Event is {}.",
                         response.getStatusCode(), inflightEvent.toShortLog());
             }
+             */
 
             inflightEvent.setWebhookHttpStatus(response.getStatusCodeValue());
             LOGGER.debug("Returning the event {}", inflightEvent.cloneWithoutSensitiveData());
             return inflightEvent;
 
         } catch (HttpClientErrorException ex) {
-            String msg = String.format("Error while calling the webhook at %s. Event is %s.",
-                    inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
+            String msg = String.format("Client error %s while calling the webhook at %s. Event is %s.",
+                    ex.getStatusCode(), inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
+            LOGGER.error(msg, ex);
+            throw new BrokerException(ex.getStatusCode(), msg, ex, inflightEvent.getWebhookUrl());
+        } catch (HttpServerErrorException ex) {
+            String msg = String.format("Server error %s while calling the webhook at %s. Event is %s.",
+                    ex.getStatusCode(), inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
             LOGGER.error(msg, ex);
             throw new BrokerException(ex.getStatusCode(), msg, ex, inflightEvent.getWebhookUrl());
         } catch (Exception ex) {
-            String msg = String.format("Error while handling the call to the webhook at %s. Event is %s.",
-                    inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
-            LOGGER.error(msg, ex);
-            throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex, inflightEvent.getWebhookUrl());
+            if (ex.getMessage().contains("Connection refused")) {
+                String msg = String.format("Connection Refused error while handling the call to webhook at %s. Event is %s.",
+                        inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
+                LOGGER.error(msg, ex);
+                throw new BrokerException(HttpStatus.BAD_GATEWAY, msg, ex, inflightEvent.getWebhookUrl());
+            }
+            else if (ex.getMessage().contains("Read timed out")) {
+                String msg = String.format("Read Timeout error while handling the call to the webhook at %s. Event is %s.",
+                        inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
+                LOGGER.error(msg, ex);
+                throw new BrokerException(HttpStatus.GATEWAY_TIMEOUT, msg, ex, inflightEvent.getWebhookUrl());
+            }
+            else {
+                String msg = String.format("Error while handling the call to the webhook at %s. Event is %s.",
+                        inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
+                LOGGER.error(msg, ex);
+                throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex, inflightEvent.getWebhookUrl());
+            }
         }
     }
 }

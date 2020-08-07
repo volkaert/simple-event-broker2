@@ -100,7 +100,7 @@ so for each published event, there are 1 successful delivery and 1 failed delive
 ```
 curl --header "Content-Type: application/json" \
   --request POST \
-  --data '{"publicationCode": "Failure500Test-PUB","payload": { "message": "Failure500Test" }, }' \
+  --data '{"publicationCode": "Failure500Test-PUB","payload": { "message": "Failure500Test" }, "timeToLiveInSeconds": 30 }' \
   http://localhost:8081/events
 ```
 

@@ -46,7 +46,7 @@ public class EventToSubscriber extends EventToSubscriberWithoutPayload {
         clone.setEventTypeCode(eventTypeCode);
         clone.setSubscriptionCode(subscriptionCode);
         clone.setSecret("*****");   // SENSITIVE DATA !
-        //clone.setRedelivered(isRedeliveered);
+        //clone.setRedelivered(redelivered);
         //clone.setDeliveryCount(deliveryCount);
         return clone;
     }

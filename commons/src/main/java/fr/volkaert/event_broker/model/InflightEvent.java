@@ -35,8 +35,8 @@ public class InflightEvent {
 
     private String secret;
 
-    private boolean redelivered;
-    private int deliveryCount;
+    //private boolean redelivered;
+    //private int deliveryCount;
 
     private String webhookUrl;
     private String webhookContentType = MediaType.APPLICATION_JSON_VALUE;
@@ -71,8 +71,8 @@ public class InflightEvent {
         clone.setCreationDate(creationDate);
         clone.setExpirationDate(expirationDate);
         clone.setSecret("*****");   // SENSITIVE DATA !
-        clone.setRedelivered(isRedelivered());
-        clone.setDeliveryCount(deliveryCount);
+        //clone.setRedelivered(isRedelivered());
+        //clone.setDeliveryCount(deliveryCount);
         clone.setWebhookUrl(webhookUrl);
         clone.setWebhookContentType(webhookContentType);
         clone.setWebhookHeaders(webhookHeaders);

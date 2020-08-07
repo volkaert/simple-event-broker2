@@ -24,6 +24,6 @@ public class EventToSubscriberWithoutPayload {
     protected String subscriptionCode;
     protected String secret;  // @Todo: to handle properly
 
-    //protected  boolean redelivered;    // @Todo: to handle properly
+   //protected  boolean redelivered;    // @Todo: to handle properly
     //protected int deliveryCount;
 }
