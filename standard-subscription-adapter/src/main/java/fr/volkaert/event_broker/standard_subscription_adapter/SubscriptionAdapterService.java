@@ -1,6 +1,5 @@
 package fr.volkaert.event_broker.standard_subscription_adapter;
 
-import fr.volkaert.event_broker.error.BrokerException;
 import fr.volkaert.event_broker.model.InflightEvent;
 import fr.volkaert.event_broker.standard_subscription_adapter.model.EventToSubscriber;
 import org.slf4j.Logger;
@@ -56,13 +55,6 @@ public class SubscriptionAdapterService {
             LOGGER.debug("The Webhook returned the http status code {}. Event is {}.",
                     response.getStatusCode(), inflightEvent.toShortLog());
 
-            /*
-            if (! response.getStatusCode().is2xxSuccessful()) {
-                LOGGER.error("The webhook returned the unsuccessful http status code {}. Event is {}.",
-                        response.getStatusCode(), inflightEvent.toShortLog());
-            }
-             */
-
             inflightEvent.setWebhookHttpStatus(response.getStatusCodeValue());
             LOGGER.debug("Returning the event {}", inflightEvent.cloneWithoutSensitiveData());
             return inflightEvent;
@@ -71,30 +63,53 @@ public class SubscriptionAdapterService {
             String msg = String.format("Client error %s while calling the webhook at %s. Event is %s.",
                     ex.getStatusCode(), inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
             LOGGER.error(msg, ex);
-            throw new BrokerException(ex.getStatusCode(), msg, ex, inflightEvent.getWebhookUrl());
+
+            inflightEvent.setWebhookClientErrorOccurred(true);
+            inflightEvent.setWebhookHttpStatus(ex.getStatusCode().value());
+            LOGGER.debug("Returning the event {}", inflightEvent.cloneWithoutSensitiveData());
+            return inflightEvent;
+
         } catch (HttpServerErrorException ex) {
             String msg = String.format("Server error %s while calling the webhook at %s. Event is %s.",
                     ex.getStatusCode(), inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
             LOGGER.error(msg, ex);
-            throw new BrokerException(ex.getStatusCode(), msg, ex, inflightEvent.getWebhookUrl());
+
+            inflightEvent.setWebhookServerErrorOccurred(true);
+            inflightEvent.setWebhookHttpStatus(ex.getStatusCode().value());
+            LOGGER.debug("Returning the event {}", inflightEvent.cloneWithoutSensitiveData());
+            return inflightEvent;
+
         } catch (Exception ex) {
             if (ex.getMessage().contains("Connection refused")) {
                 String msg = String.format("Connection Refused error while handling the call to webhook at %s. Event is %s.",
                         inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
                 LOGGER.error(msg, ex);
-                throw new BrokerException(HttpStatus.BAD_GATEWAY, msg, ex, inflightEvent.getWebhookUrl());
+
+                inflightEvent.setWebhookConnectionErrorOccurred(true);
+                inflightEvent.setWebhookHttpStatus(HttpStatus.BAD_GATEWAY.value());
+                LOGGER.debug("Returning the event {}", inflightEvent.cloneWithoutSensitiveData());
+                return inflightEvent;
             }
+
             else if (ex.getMessage().contains("Read timed out")) {
                 String msg = String.format("Read Timeout error while handling the call to the webhook at %s. Event is %s.",
                         inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
                 LOGGER.error(msg, ex);
-                throw new BrokerException(HttpStatus.GATEWAY_TIMEOUT, msg, ex, inflightEvent.getWebhookUrl());
+
+                inflightEvent.setWebhookReadTimeoutErrorOccurred(true);
+                inflightEvent.setWebhookHttpStatus(HttpStatus.GATEWAY_TIMEOUT.value());
+                LOGGER.debug("Returning the event {}", inflightEvent.cloneWithoutSensitiveData());
+                return inflightEvent;
             }
+
             else {
                 String msg = String.format("Error while handling the call to the webhook at %s. Event is %s.",
                         inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
                 LOGGER.error(msg, ex);
-                throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex, inflightEvent.getWebhookUrl());
+
+                inflightEvent.setWebhookHttpStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
+                LOGGER.debug("Returning the event {}", inflightEvent.cloneWithoutSensitiveData());
+                return inflightEvent;
             }
         }
     }

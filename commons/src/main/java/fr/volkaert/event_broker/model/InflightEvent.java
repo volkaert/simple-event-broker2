@@ -42,6 +42,10 @@ public class InflightEvent {
     private String webhookContentType = MediaType.APPLICATION_JSON_VALUE;
     private String webhookHeaders;  // format: header1:value1;header2=value2;header3=value3
     private int webhookHttpStatus;  // HTTP status code returned by the webhook
+    private boolean webhookConnectionErrorOccurred;
+    private boolean webhookReadTimeoutErrorOccurred;
+    private boolean webhookClientErrorOccurred;
+    private boolean webhookServerErrorOccurred;
 
     private String authMethod = "basicauth";    // allowed values are "basicauth" and "oauth2"; if null, "basicauth" is used by default
     private String authClientId;
@@ -77,6 +81,10 @@ public class InflightEvent {
         clone.setWebhookContentType(webhookContentType);
         clone.setWebhookHeaders(webhookHeaders);
         clone.setWebhookHttpStatus(webhookHttpStatus);
+        clone.setWebhookConnectionErrorOccurred(webhookConnectionErrorOccurred);
+        clone.setWebhookReadTimeoutErrorOccurred(webhookReadTimeoutErrorOccurred);
+        clone.setWebhookClientErrorOccurred(webhookClientErrorOccurred);
+        clone.setWebhookServerErrorOccurred(webhookServerErrorOccurred);
         clone.setAuthMethod("*****"); // SENSITIVE DATA !
         clone.setAuthClientId("*****"); // SENSITIVE DATA !
         clone.setAuthClientSecret("*****"); // SENSITIVE DATA !

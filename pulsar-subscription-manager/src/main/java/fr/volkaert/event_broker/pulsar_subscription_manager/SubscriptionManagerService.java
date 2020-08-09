@@ -186,6 +186,18 @@ public class SubscriptionManagerService {
 
             try {
                 inflightEvent = callSubscriptionAdapter(inflightEvent);
+
+                if (inflightEvent.isWebhookConnectionErrorOccurred() ||
+                        inflightEvent.isWebhookReadTimeoutErrorOccurred() ||
+                        inflightEvent.isWebhookClientErrorOccurred() ||
+                        inflightEvent.isWebhookServerErrorOccurred()) {
+                    LOGGER.warn("Negative ack (due to webhook error) for message {}. Event is {}.",
+                            message.getMessageId(), inflightEvent.toShortLog());
+                    consumer.negativeAcknowledge(message);
+                    metricsService.registerFailedDeliveryAttempt(
+                            inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
+                    return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
+                }
             } catch (Exception ex) {
                 // No Need to log the error since it has already been logged in callSubscriptionAdapter()
                 LOGGER.warn("Negative ack (due to exception) for message {}. Event is {}.",
@@ -195,32 +207,6 @@ public class SubscriptionManagerService {
                         inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
                 return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
             }
-
-            /*
-            HttpStatus httpStatusReturnedByWebhook = HttpStatus.INTERNAL_SERVER_ERROR;
-            try {
-                httpStatusReturnedByWebhook = HttpStatus.valueOf(inflightEvent.getWebhookHttpStatus());
-            } catch (Exception ex) {
-                LOGGER.error("Unknown http status code {}. Event is {}.",
-                        inflightEvent.getWebhookHttpStatus(), inflightEvent.toShortLog(), ex);
-                LOGGER.warn("Negative ack (due to unknown http status code) for message {}. Event is {}.",
-                        message.getMessageId(), inflightEvent.toShortLog());
-                consumer.negativeAcknowledge(message);
-                metricsService.registerFailedDeliveryAttempt(
-                        inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
-                return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
-            }
-
-            if (! httpStatusReturnedByWebhook.is2xxSuccessful()) {
-                LOGGER.warn("Negative ack (due to unsuccessful http status code) for message {}. " +
-                                "Http status code is {}. Event is {}.",
-                        message.getMessageId(), httpStatusReturnedByWebhook.value(), inflightEvent.toShortLog());
-                consumer.negativeAcknowledge(message);
-                metricsService.registerFailedDeliveryAttempt(
-                        inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
-                return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
-            }
-            */
 
             // If we reached this line, everything seems fine, so we can ack the message
             LOGGER.debug("Ack for message {}. Event is {}.", message.getMessageId(), inflightEvent.toShortLog());
@@ -262,16 +248,9 @@ public class SubscriptionManagerService {
             LOGGER.debug("The Subscription Adapter returned the http status code {}. Event is {}.",
                     response.getStatusCode(), inflightEvent.toShortLog());
 
-            /*
-            if (! response.getStatusCode().is2xxSuccessful()) {
-                LOGGER.error("The Subscription Adapter returned the unsuccessful http status code {}. Event is {}.",
-                        response.getStatusCode(), inflightEvent.toShortLog());
-            }
-             */
-
-            inflightEvent.setWebhookHttpStatus(response.getStatusCodeValue());
-            LOGGER.debug("Returning the event {}", inflightEvent.cloneWithoutSensitiveData());
-            return inflightEvent;
+            InflightEvent returnedInflightEvent = response.getBody();
+            LOGGER.debug("Returning the event {}", returnedInflightEvent.cloneWithoutSensitiveData());
+            return returnedInflightEvent;
 
         } catch (HttpClientErrorException ex) {
             String msg = String.format("Client error %s while calling the subscription adapter at %s. Event is %s.",

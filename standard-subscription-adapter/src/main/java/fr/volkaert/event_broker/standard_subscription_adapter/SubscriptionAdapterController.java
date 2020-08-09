@@ -26,9 +26,10 @@ public class SubscriptionAdapterController {
     public ResponseEntity<InflightEvent> callWebhook(@RequestBody InflightEvent inflightEvent) {
         try {
             InflightEvent returnedInflightEvent = service.callWebhook(inflightEvent);
-            return new ResponseEntity(returnedInflightEvent, HttpStatus.valueOf(returnedInflightEvent.getWebhookHttpStatus()));
+            return new ResponseEntity(returnedInflightEvent, HttpStatus.OK);
         } catch (BrokerException ex) {
-            LOGGER.error(ex.getMessage(), ex);
+            // If error is a BrokerException, the error should already have been logged
+            //LOGGER.error(ex.getMessage(), ex);
             return new ResponseEntity(new BrokerExceptionResponse(ex), ex.getHttpStatus());
         } catch (Exception ex) {
             LOGGER.error(ex.getMessage(), ex);
