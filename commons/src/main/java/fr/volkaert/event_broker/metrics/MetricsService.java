@@ -24,8 +24,8 @@ public class MetricsService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MetricsService.class);
 
-    private Map<String, AtomicLong> pendingPublicationGauges = new ConcurrentHashMap<>();
-    private Map<String, AtomicLong> pendingDeliveriesGauges = new ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> pendingPublicationGauges = new ConcurrentHashMap<>();
+    //private final Map<String, AtomicLong> pendingDeliveriesGauges = new ConcurrentHashMap<>();
 
     public synchronized void registerPublicationWithMissingPublicationCode() {
         Counter counter = meterRegistry.counter("publications_with_missing_publication_code_total");
@@ -68,6 +68,7 @@ public class MetricsService {
         publicationTimer.record(Duration.between(publicationStart, publicationEnd).toMillis(), TimeUnit.MILLISECONDS);
     }
 
+    /*
     public synchronized Instant registerBeginOfDelivery(String subscriptionCode, String eventTypeCode, String publicationCode) {
         AtomicLong pendingDeliveries = pendingDeliveriesGauges.computeIfAbsent(eventTypeCode + "/" + subscriptionCode, x -> {
             return meterRegistry.gauge("pending_deliveries",
@@ -79,6 +80,7 @@ public class MetricsService {
         Instant deliveryStart = Instant.now();
         return deliveryStart;
     }
+    */
 
     public synchronized void registerSuccessfulDelivery(String subscriptionCode, String eventTypeCode, String publicationCode) {
         Counter successfulDeliveriesCounter = meterRegistry.counter("successful_deliveries_total",
@@ -90,11 +92,13 @@ public class MetricsService {
         deliveryAttemptsCounter.increment();
     }
 
+    /*
     public synchronized void registerFailedDelivery(String subscriptionCode, String eventTypeCode, String publicationCode) {
         Counter failedDeliveriesCounter = meterRegistry.counter("failed_deliveries_total",
                 Tags.of("subscription_code", subscriptionCode, "event_type_code" , eventTypeCode, "publication_code", publicationCode));
         failedDeliveriesCounter.increment();
     }
+    */
 
     public synchronized void registerFailedDeliveryAttempt(String subscriptionCode, String eventTypeCode, String publicationCode) {
         Counter failedDeliveriesAttemptsCounter = meterRegistry.counter("failed_deliveries_attempts_total",
@@ -106,6 +110,7 @@ public class MetricsService {
         deliveryAttemptsCounter.increment();
     }
 
+    /*
     public synchronized void registerEndOfDelivery(String subscriptionCode, String eventTypeCode, String publicationCode, Instant deliveryStart) {
         AtomicLong pendingDeliveries = pendingDeliveriesGauges.computeIfAbsent(eventTypeCode + "/" + subscriptionCode, x -> {
             return meterRegistry.gauge("pending_deliveries",
@@ -123,5 +128,5 @@ public class MetricsService {
                 Tags.of("subscription_code", subscriptionCode, "event_type_code" , eventTypeCode, "publication_code", publicationCode));
         deliveriesCounter.increment();
     }
-
+    */
 }
