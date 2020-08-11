@@ -14,6 +14,31 @@ The v2 version uses SpringBoot (and not Quarkus) and Apache Pulsar (and not a cu
 - Catalog. In dev mode, it uses port 8089.
 - Test/Fake Subscriber. In dev mode, it uses port 8099.
 
+`Apache Pulsar` (https://pulsar.apache.org) is an open-source distributed pub-sub messaging system originally created 
+at Yahoo and now part of the Apache Software Foundation. This Simple Event Broker project uses Apache Pulsar as the 
+underlying broker system instead of more classic RabbitMQ or Apache Kafka. This choice was made just to learn a new broker
+solution and not for its intrinsic qualities.
+
+A `Manager` (`PublicationManager` and `SubscriptionManager`) contains the logic of publication/subscription, the management
+of acknowledgment of message/event (either positive or negative acknowledgment), the interaction with the underlying 
+broker system (here it is Apache Pulsar but Apache Kafka or RabbitMQ could also be used - but it would require to rewrite 
+some portions of the code).
+
+An `Adapter` (`PublicationAdapter` and `SubscriptionAdapter`) contains dummy/boilerplate code to adapt the interactions 
+between the broker and its ecosystem which may vary a lot. For example, in some contexts, it is ok to secure the call to 
+the webhooks with just BasicAuth. In other contexts, OAuth2 may be required. Or some other security mechanism specialized
+for an organization. The Adapters are independent of the underlying broker technology (Pulsar, Kafka, RabbitMQ...).
+
+The roles and responsibilities of managers and adapters are clearly defined to allow the seamless replacement of a
+component by another.
+
+The `Catalog` is in charge of the management of the objects `EventType`, `Publication` and `Subscription`. 
+Most of the other components require access to the Catalog to operate.
+ 
+The `Publication Gateway` is the entry point to publish an event. It is based on a `Spring Cloud Gateway`. Automatic 
+retry features will be added in the future to ensure no interruption service even in the case of the release of a new
+version of a `PublicationAdapter` or `PublicationManager`.
+ 
 
 ## Event flow
 1. Event Publisher 
