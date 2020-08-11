@@ -24,6 +24,8 @@ public class EventToPublisher {
     private String eventTypeCode;
 
     public static EventToPublisher from(InflightEvent inflightEvent) {
+        if (inflightEvent == null) return null;
+
         EventToPublisher eventToPublisher = new EventToPublisher();
         eventToPublisher.setBusinessId(inflightEvent.getBusinessId());
         eventToPublisher.setPublicationCode(inflightEvent.getPublicationCode());

@@ -64,7 +64,7 @@ public class SubscriptionAdapterService {
                     ex.getStatusCode(), inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
             LOGGER.error(msg, ex);
 
-            inflightEvent.setWebhookClientErrorOccurred(true);
+            inflightEvent.setWebhookClient4xxErrorOccurred(true);
             inflightEvent.setWebhookHttpStatus(ex.getStatusCode().value());
             LOGGER.debug("Returning the event {}", inflightEvent.cloneWithoutSensitiveData());
             return inflightEvent;
@@ -74,7 +74,7 @@ public class SubscriptionAdapterService {
                     ex.getStatusCode(), inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
             LOGGER.error(msg, ex);
 
-            inflightEvent.setWebhookServerErrorOccurred(true);
+            inflightEvent.setWebhookServer5xxErrorOccurred(true);
             inflightEvent.setWebhookHttpStatus(ex.getStatusCode().value());
             LOGGER.debug("Returning the event {}", inflightEvent.cloneWithoutSensitiveData());
             return inflightEvent;

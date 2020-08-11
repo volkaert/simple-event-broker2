@@ -186,23 +186,62 @@ public class SubscriptionManagerService {
 
             try {
                 inflightEvent = callSubscriptionAdapter(inflightEvent);
+            } catch (Exception ex) {
+                // No Need to log the error since it has already been logged in callSubscriptionAdapter()
+                LOGGER.warn("Negative ack (due to exception while calling the Subscription Adapter) for message {}. Event is {}.",
+                        message.getMessageId(), inflightEvent.toShortLog());
+                consumer.negativeAcknowledge(message);
+                metricsService.registerFailedDeliveryAttempt(
+                        inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
+                return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
+            }
 
-                if (inflightEvent.isWebhookConnectionErrorOccurred() ||
-                        inflightEvent.isWebhookReadTimeoutErrorOccurred() ||
-                        inflightEvent.isWebhookClientErrorOccurred() ||
-                        inflightEvent.isWebhookServerErrorOccurred()) {
+            if (inflightEvent.isWebhookConnectionErrorOccurred() ||
+                    inflightEvent.isWebhookReadTimeoutErrorOccurred() ||
+                    inflightEvent.isWebhookServer5xxErrorOccurred() ||
+                    inflightEvent.isWebhookClient4xxErrorOccurred()) {
+
+                boolean eventExpiredDueToTimeToLiveForWebhookError = false;
+                String eventExpirationReason = null;
+
+                if (inflightEvent.isWebhookConnectionErrorOccurred()) {
+                    eventExpiredDueToTimeToLiveForWebhookError = isEventExpiredDueToTimeToLiveForWebhookError(inflightEvent, now,
+                            config.getDefaultTimeToLiveInSecondsForWebhookConnectionError(),
+                            subscription.getTimeToLiveInSecondsForWebhookConnectionError());
+                    eventExpirationReason = "connection";
+                }
+                else if (inflightEvent.isWebhookReadTimeoutErrorOccurred()) {
+                    eventExpiredDueToTimeToLiveForWebhookError = isEventExpiredDueToTimeToLiveForWebhookError(inflightEvent, now,
+                            config.getDefaultTimeToLiveInSecondsForWebhookReadTimeoutError(),
+                            subscription.getTimeToLiveInSecondsForWebhookReadTimeoutError());
+                    eventExpirationReason = "read timeout";
+                }
+                else if (inflightEvent.isWebhookServer5xxErrorOccurred()) {
+                    eventExpiredDueToTimeToLiveForWebhookError = isEventExpiredDueToTimeToLiveForWebhookError(inflightEvent, now,
+                            config.getDefaultTimeToLiveInSecondsForWebhookServer5xxError(),
+                            subscription.getTimeToLiveInSecondsForWebhookServer5xxError());
+                    eventExpirationReason = "server 5xx";
+                }
+                else if (inflightEvent.isWebhookClient4xxErrorOccurred()) {
+                    eventExpiredDueToTimeToLiveForWebhookError = isEventExpiredDueToTimeToLiveForWebhookError(inflightEvent, now,
+                            config.getDefaultTimeToLiveInSecondsForWebhookClient4xxError(),
+                            subscription.getTimeToLiveInSecondsForWebhookClient4xxError());
+                    eventExpirationReason = "client 4xx";
+                }
+
+                if (eventExpiredDueToTimeToLiveForWebhookError) {
+                    LOGGER.warn("Event expired before delivery due to time to live expiration because of a webhook {} error. Event is {}.",
+                            eventExpirationReason, inflightEvent.toShortLog());
+                    LOGGER.warn("Ack (due to expired event) for message {}. Event is {}.", message.getMessageId(), inflightEvent.toShortLog());
+                    consumer.acknowledge(message);
+                    recordEventInDLQ(inflightEvent);
+                }
+                else {
                     LOGGER.warn("Negative ack (due to webhook error) for message {}. Event is {}.",
                             message.getMessageId(), inflightEvent.toShortLog());
                     consumer.negativeAcknowledge(message);
-                    metricsService.registerFailedDeliveryAttempt(
-                            inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
-                    return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
                 }
-            } catch (Exception ex) {
-                // No Need to log the error since it has already been logged in callSubscriptionAdapter()
-                LOGGER.warn("Negative ack (due to exception) for message {}. Event is {}.",
-                        message.getMessageId(), inflightEvent.toShortLog());
-                consumer.negativeAcknowledge(message);
+
                 metricsService.registerFailedDeliveryAttempt(
                         inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
                 return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
@@ -249,34 +288,34 @@ public class SubscriptionManagerService {
                     response.getStatusCode(), inflightEvent.toShortLog());
 
             InflightEvent returnedInflightEvent = response.getBody();
-            LOGGER.debug("Returning the event {}", returnedInflightEvent.cloneWithoutSensitiveData());
+            LOGGER.debug("Returning the event {}", returnedInflightEvent != null ? returnedInflightEvent.cloneWithoutSensitiveData() : null);
             return returnedInflightEvent;
 
         } catch (HttpClientErrorException ex) {
-            String msg = String.format("Client error %s while calling the subscription adapter at %s. Event is %s.",
+            String msg = String.format("Client error %s while calling the Subscription Adapter at %s. Event is %s.",
                     ex.getStatusCode(), subscriptionAdapterUrl, inflightEvent.toShortLog());
             LOGGER.error(msg, ex);
             throw new BrokerException(ex.getStatusCode(), msg, ex, subscriptionAdapterUrl);
         } catch (HttpServerErrorException ex) {
-            String msg = String.format("Server error %s while calling the subscription adapter at %s. Event is %s.",
+            String msg = String.format("Server error %s while calling the Subscription Adapter at %s. Event is %s.",
                     ex.getStatusCode(), subscriptionAdapterUrl, inflightEvent.toShortLog());
             LOGGER.error(msg, ex);
             throw new BrokerException(ex.getStatusCode(), msg, ex, subscriptionAdapterUrl);
         } catch (Exception ex) {
             if (ex.getMessage().contains("Connection refused")) {
-                String msg = String.format("Connection Refused error while handling the call to the subscription adapter at %s. Event is %s.",
+                String msg = String.format("Connection Refused error while calling the Subscription Adapter at %s. Event is %s.",
                         subscriptionAdapterUrl, inflightEvent.toShortLog());
                 LOGGER.error(msg, ex);
                 throw new BrokerException(HttpStatus.BAD_GATEWAY, msg, ex, subscriptionAdapterUrl);
             }
             else if (ex.getMessage().contains("Read timed out")) {
-                String msg = String.format("Read Timeout error while handling the call to the subscription adapter at %s. Event is %s.",
+                String msg = String.format("Read Timeout error while calling the Subscription Adapter at %s. Event is %s.",
                         subscriptionAdapterUrl, inflightEvent.toShortLog());
                 LOGGER.error(msg, ex);
                 throw new BrokerException(HttpStatus.GATEWAY_TIMEOUT, msg, ex, subscriptionAdapterUrl);
             }
             else {
-                String msg = String.format("Error while handling the call to the subscription adapter at %s. Event is %s.",
+                String msg = String.format("Error while calling the Subscription Adapter at %s. Event is %s.",
                         subscriptionAdapterUrl, inflightEvent.toShortLog());
                 LOGGER.error(msg, ex);
                 throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex, subscriptionAdapterUrl);
@@ -288,38 +327,49 @@ public class SubscriptionManagerService {
         if (event == null) return;
         try {
             event = event.cloneWithoutSensitiveData();
-            LOGGER.warn("Recording event in the DLQ for eventTypeCode {}. Event is {}.",
-                    event.getEventTypeCode(), event.toShortLog());
-            Producer<InflightEvent> producer = getPulsarProducerForDLQ(event.getEventTypeCode());
+            LOGGER.warn("Recording event in the DLQ for eventTypeCode {} and subscriptionCode {}. Event is {}.",
+                    event.getEventTypeCode(), event.getSubscriptionCode(), event.toShortLog());
+            Producer<InflightEvent> producer = getPulsarProducerForDLQ(event.getEventTypeCode(), event.getSubscriptionCode());
             producer.send(event);
         } catch (Exception ex) {
-            LOGGER.error("Error while recording an event in the DLQ for eventTypeCode {}. Event is {}.",
-                    event.getEventTypeCode(), event.toShortLog(), ex);
+            LOGGER.error("Error while recording an event in the DLQ for eventTypeCode {} and subscriptionCode {}. Event is {}.",
+                    event.getEventTypeCode(), event.getSubscriptionCode(), event.toShortLog(), ex);
         }
     }
 
-    private synchronized Producer<InflightEvent> getPulsarProducerForDLQ(String eventTypeCode) {
+    private synchronized Producer<InflightEvent> getPulsarProducerForDLQ(String eventTypeCode, String subscriptionCode) {
         Producer<InflightEvent> producer = eventTypeCodeToPulsarProducerForDLQMap.computeIfAbsent(eventTypeCode, x -> {
             try {
-                LOGGER.info("Creating Pulsar producer for DLQ for eventTypeCode {}", eventTypeCode);
+                LOGGER.info("Creating Pulsar producer for DLQ for eventTypeCode {} and subscriptionCode {}",
+                        eventTypeCode, subscriptionCode);
                 Producer<InflightEvent> p =  pulsar.newProducer(Schema.JSON(InflightEvent.class))
-                        .topic(eventTypeCode + "_AppDLQ")
+                        .topic(eventTypeCode + "_" + subscriptionCode + "_AppDLQ")
                         .create();
                 if (p != null) {
-                    LOGGER.info("Pulsar producer for DLQ created for eventTypeCode {}", eventTypeCode);
+                    LOGGER.info("Pulsar producer for DLQ created for eventTypeCode {} and subscriptionCode {}",
+                            eventTypeCode, subscriptionCode);
                 }
                 return p;
             } catch (Exception ex) {
-                String msg = String.format("Error while creating a Pulsar producer for DLQ for eventTypeCode %s", eventTypeCode);
+                String msg = String.format("Error while creating a Pulsar producer for DLQ for eventTypeCode %s and subscriptionCode %s",
+                        eventTypeCode, subscriptionCode);
                 LOGGER.error(msg, ex);
                 return null;
             }
         });
         if (producer == null) {
             // No Need to log the error since it has already been logged in eventTypeCodeToPulsarProducerForDLQMap.computeIfAbsent
-            String msg = String.format("Error while creating a Pulsar producer for DLQ for eventTypeCode %s", eventTypeCode);
+            String msg = String.format("Error while creating a Pulsar producer for DLQ for eventTypeCode %s ans subscriptionCode %s", eventTypeCode, subscriptionCode);
             throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg);
         }
         return producer;
+    }
+
+    private boolean isEventExpiredDueToTimeToLiveForWebhookError(InflightEvent event, Instant now, long defaultTimeToLiveForWebhookError, Long timeToLiveForWebhookErrorInSubscription) {
+        long timeToLiveInSecondsToUse = defaultTimeToLiveForWebhookError;
+        if (timeToLiveForWebhookErrorInSubscription != null && timeToLiveForWebhookErrorInSubscription > 0) {
+            timeToLiveInSecondsToUse = timeToLiveForWebhookErrorInSubscription;
+        }
+        return now.isAfter(event.getCreationDate().plusSeconds(timeToLiveInSecondsToUse));
     }
 }

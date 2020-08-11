@@ -20,4 +20,9 @@ public class BrokerConfig {
     private String subscriptionAdapterUrl;
     private String authClientIdForSubscriptionAdapter;
     private String authClientSecretForSubscriptionAdapter;
+
+    private long defaultTimeToLiveInSecondsForWebhookConnectionError;
+    private long defaultTimeToLiveInSecondsForWebhookReadTimeoutError;
+    private long defaultTimeToLiveInSecondsForWebhookServer5xxError;
+    private long defaultTimeToLiveInSecondsForWebhookClient4xxError;
 }
