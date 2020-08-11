@@ -10,6 +10,8 @@ import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.Schema;
+import org.apache.pulsar.client.api.schema.SchemaDefinition;
+import org.apache.pulsar.client.internal.DefaultImplementation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -95,7 +97,9 @@ public class PublicationManagerService {
         Producer<InflightEvent> producer = eventTypeCodeToPulsarProducerMap.computeIfAbsent(eventTypeCode, x -> {
             try {
                 LOGGER.info("Creating Pulsar producer for eventTypeCode {}", eventTypeCode);
-                Producer<InflightEvent> p =  pulsar.newProducer(Schema.JSON(InflightEvent.class))
+                //Schema<InflightEvent> schema = Schema.JSON(InflightEvent.class);
+                Schema<InflightEvent> schema = DefaultImplementation.newJSONSchema(SchemaDefinition.builder().withJSR310ConversionEnabled(true).withPojo(InflightEvent.class).build());
+                Producer<InflightEvent> p =  pulsar.newProducer(schema)
                         .topic(eventTypeCode)
                         .create();
                 if (p != null) {

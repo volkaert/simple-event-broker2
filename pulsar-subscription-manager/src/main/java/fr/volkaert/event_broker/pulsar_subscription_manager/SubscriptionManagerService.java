@@ -7,6 +7,8 @@ import fr.volkaert.event_broker.model.EventType;
 import fr.volkaert.event_broker.model.InflightEvent;
 import fr.volkaert.event_broker.model.Subscription;
 import org.apache.pulsar.client.api.*;
+import org.apache.pulsar.client.api.schema.SchemaDefinition;
+import org.apache.pulsar.client.internal.DefaultImplementation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -86,7 +88,9 @@ public class SubscriptionManagerService {
         Consumer<InflightEvent> consumer = subscriptionCodeToPulsarConsumerMap.computeIfAbsent(subscriptionCode, x -> {
             try {
                 LOGGER.info("Creating Pulsar consumer for eventTypeCode {} and subscriptionCode {}", eventTypeCode, subscriptionCode);
-                Consumer<InflightEvent> c = pulsar.newConsumer(Schema.JSON(InflightEvent.class))
+                //Schema<InflightEvent> schema = Schema.JSON(InflightEvent.class);
+                Schema<InflightEvent> schema = DefaultImplementation.newJSONSchema(SchemaDefinition.builder().withJSR310ConversionEnabled(true).withPojo(InflightEvent.class).build());
+                Consumer<InflightEvent> c = pulsar.newConsumer(schema)
                         .topic(eventTypeCode)
                         .subscriptionName(subscriptionCode)
                         .subscriptionType(SubscriptionType.Failover)
@@ -130,10 +134,10 @@ public class SubscriptionManagerService {
             String subscriptionCode = consumer.getSubscription();
             inflightEvent.setSubscriptionCode(subscriptionCode);
 
-            // Strange: message.getRedeliveryCount() is alwwys 0 !!!
-            //System.out.println("\n\n\n\n\n\n*********** message.getRedeliveryCount() " + message.getRedeliveryCount() + " ***************\n\n\n\n\n\n");
-            //inflightEvent.setRedelivered(message.getRedeliveryCount() >= 1);
-            //inflightEvent.setDeliveryCount(message.getRedeliveryCount() + 1);
+            // Strange: message.getRedeliveryCount() is always 0 !!!
+            LOGGER.warn("********** message.getRedeliveryCount() is always 0 !!! **********: {}", message.getRedeliveryCount());
+            inflightEvent.setRedelivered(message.getRedeliveryCount() >= 1);
+            inflightEvent.setRedeliveryCount(message.getRedeliveryCount());
 
             LOGGER.debug("Event received from Pulsar. Event is {}.", inflightEvent.cloneWithoutSensitiveData());
 
@@ -342,7 +346,9 @@ public class SubscriptionManagerService {
             try {
                 LOGGER.info("Creating Pulsar producer for DLQ for eventTypeCode {} and subscriptionCode {}",
                         eventTypeCode, subscriptionCode);
-                Producer<InflightEvent> p =  pulsar.newProducer(Schema.JSON(InflightEvent.class))
+                //Schema<InflightEvent> schema = Schema.JSON(InflightEvent.class);
+                Schema<InflightEvent> schema = DefaultImplementation.newJSONSchema(SchemaDefinition.builder().withJSR310ConversionEnabled(true).withPojo(InflightEvent.class).build());
+                Producer<InflightEvent> p =  pulsar.newProducer(schema)
                         .topic(eventTypeCode + "_" + subscriptionCode + "_AppDLQ")
                         .create();
                 if (p != null) {

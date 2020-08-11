@@ -28,8 +28,8 @@ public class EventToSubscriber extends EventToSubscriberWithoutPayload {
         eventToSubscriber.setEventTypeCode(inflightEvent.getEventTypeCode());
         eventToSubscriber.setSubscriptionCode(inflightEvent.getSubscriptionCode());
         eventToSubscriber.setSecret(inflightEvent.getSecret());
-        //eventToSubscriber.setRedelivered(inflightEvent.isRedelivered());
-        //eventToSubscriber.setDeliveryCount(inflightEvent.getDeliveryCount());
+        eventToSubscriber.setRedelivered(inflightEvent.isRedelivered());
+        eventToSubscriber.setRedeliveryCount(inflightEvent.getRedeliveryCount());
         return eventToSubscriber;
     }
 
@@ -46,8 +46,8 @@ public class EventToSubscriber extends EventToSubscriberWithoutPayload {
         clone.setEventTypeCode(eventTypeCode);
         clone.setSubscriptionCode(subscriptionCode);
         clone.setSecret("*****");   // SENSITIVE DATA !
-        //clone.setRedelivered(redelivered);
-        //clone.setDeliveryCount(deliveryCount);
+        clone.setRedelivered(redelivered);
+        clone.setRedeliveryCount(redeliveryCount);
         return clone;
     }
 }

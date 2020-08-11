@@ -174,3 +174,8 @@ bin/pulsar-admin topics delete --deleteSchema persistent://public/default/<topic
 ## Misc
 
 Online Bcrypt Hash Generator and Checker(Bcrypt Calculator): https://www.devglan.com/online-tools/bcrypt-hash-generator
+
+bin/pulsar-admin namespaces set-is-allow-auto-update-schema --enable public/default
+bin/pulsar-admin namespaces set-schema-compatibility-strategy --compatibility ALWAYS_COMPATIBLE public/default
+
+
