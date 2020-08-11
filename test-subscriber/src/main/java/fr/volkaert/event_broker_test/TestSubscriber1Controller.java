@@ -56,4 +56,11 @@ public class TestSubscriber1Controller {
         LOGGER.info(msg);
         return ResponseEntity.ok(msg);
     }
+
+    @PostMapping(value = "/complex-payload2", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> complexPayload2(@RequestBody EventToSubscriberWithComplexTestPayload2 event, @RequestHeader HttpHeaders httpHeaders) {
+        String msg = "Webhook 'complexPayload2' called with event " + event + " (headers are " + httpHeaders + ")";
+        LOGGER.info(msg);
+        return ResponseEntity.ok(msg);
+    }
 }

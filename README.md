@@ -128,6 +128,21 @@ curl --header "Content-Type: application/json" \
   http://localhost:8081/events
 ```
 
+### Test with a complex payload 
+```
+curl --header "Content-Type: application/json" \
+  --request POST \
+  --data '{"publicationCode": "ComplexPayloadTest-PUB","payload": { "message": "ComplexPayloadTest", "timeToSleepInMillis": 2000, "items": [{ "param1": "hello", "param2": "world" }]}, "timeToLiveInSeconds": 30 }' \
+  http://localhost:8081/events
+```
+```
+curl --header "Content-Type: application/json" \
+  --request POST \
+  --data '{"publicationCode": "ComplexPayload2Test-PUB","payload": { "message": "ComplexPayload2Test", "timeToSleepInMillis": 2000, "someStringParam": "hello world", "items2": [{ "p1": 1, "p2": 2 }]}, "timeToLiveInSeconds": 30 }' \
+  http://localhost:8081/events
+```
+
+
 ## Troubleshooting
 To kill a process that runs on a given port:
 ```
