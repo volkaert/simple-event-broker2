@@ -75,10 +75,31 @@ Those `broker.default-time-to-live-in-seconds-for-webhook-XXX-error` default val
 subscription using the attributes `timeToLiveInSecondsForWebhookXXXError` of the Subscription object (in the `common` 
 module).
 
-When a event expired, it is sent to a `DeadLetterQueue (DLQ)` for analysis of the cause of a failed delivery of the 
+When an event expires, it is sent to a `DeadLetterQueue (DLQ)` for analysis of the cause of a failed delivery of the 
 event to a subscriber. The DeadLetterQueue in Apache Pulsar uses the topic name `{eventTypeCode}_{subscriptionCode}_AppDLQ`
 (notice the suffix *App*DLQ to avoid conflict with native Apache Pulsar DLQ which use the prefix DLQ).
-  
+ 
+ 
+## Predefined Event Types samples
+
+The `Catalog` module contains some predefined event types samples. Those predefined event types (and the related
+publications and subscriptions) are declared in the `resources/import.sql` file of the `Catalog` module. 
+
+Those predefined event types samples are:
+- NominalTest-EVT
+- Failure401Test-EVT
+- Failure500Test-EVT
+- SlowTest-EVT
+- ComplexPayloadTest-EVT
+- ComplexPayload2Test-EVT
+- TimeToLiveTest-EVT
+
+For each predefined event types samples, there is a webhook endpoint exposed by the `TestSubscriber1Controller` class 
+in the `test-subscriber` module.
+
+To publish an event for one of those predefined event types samples named `XxxxxTest-EVT`, use the publication code
+`XxxxxTest-PUB` when publishing the event on the endpoint `/events`.
+
 
 ## Install and run Apache Pulsar
 
