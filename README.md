@@ -52,6 +52,34 @@ version of a `PublicationAdapter` or `PublicationManager`.
 9. Event Subscriber
 
 
+## Event expiration
+
+An event will expire if one of the following condition is met:
+- the `timeToLiveInSeconds` of the published event has been reached (attribute timeToLiveInSeconds of the event sent to the 
+`/events` endpoint exposed by the Publication Gateway or the Publication Adapter)
+- the webhook returned a 401 (UNAUTHORIZED) or 403 (FORBIDDEN) HTTP status code and the 
+`broker.default-time-to-live-in-seconds-for-webhook-auth401Or403-error` (set in the SubscriptionManager config) has been reached.
+- the webhook returned a 4xx (but not 401 nor 403) HTTP status code and the 
+`broker.default-time-to-live-in-seconds-for-webhook-client4xx-error` (set in the SubscriptionManager config) has been reached.
+- the webhook returned a 5xx HTTP status code and the `broker.default-time-to-live-in-seconds-for-webhook-sever5xx-error` 
+(set in the SubscriptionManager config) has been reached.
+- the webhook was unreachable (due to a wrong URL of the webhook, a network route not open...) and the 
+`broker.default-time-to-live-in-seconds-for-webhook-connection-error` (set in
+the SubscriptionManager config) has been reached.
+- the webhook was reached but never returned a response before the `webhookReadTimeoutInSeconds` timeout (set in the 
+SubscriptionAdapter and the SubscriptionManager config) was triggered and the 
+`broker.default-time-to-live-in-seconds-for-webhook-read-timeout-error` (set in
+the SubscriptionManager config) has been reached.
+
+Those `broker.default-time-to-live-in-seconds-for-webhook-XXX-error` default values can be overridden for a given 
+subscription using the attributes `timeToLiveInSecondsForWebhookXXXError` of the Subscription object (in the `common` 
+module).
+
+When a event expired, it is sent to a `DeadLetterQueue (DLQ)` for analysis of the cause of a failed delivery of the 
+event to a subscriber. The DeadLetterQueue in Apache Pulsar uses the topic name `{eventTypeCode}_{subscriptionCode}_AppDLQ`
+(notice the suffix *App*DLQ to avoid conflict with native Apache Pulsar DLQ which use the prefix DLQ).
+  
+
 ## Install and run Apache Pulsar
 
 ```
