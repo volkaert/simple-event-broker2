@@ -25,4 +25,5 @@ public class BrokerConfig {
     private long defaultTimeToLiveInSecondsForWebhookReadTimeoutError;
     private long defaultTimeToLiveInSecondsForWebhookServer5xxError;
     private long defaultTimeToLiveInSecondsForWebhookClient4xxError;
+    private long defaultTimeToLiveInSecondsForWebhookAuth401Or403Error;
 }

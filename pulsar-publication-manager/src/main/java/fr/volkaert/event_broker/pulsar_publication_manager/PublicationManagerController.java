@@ -26,16 +26,16 @@ public class PublicationManagerController {
     private static final Logger LOGGER = LoggerFactory.getLogger(PublicationManagerController.class);
 
     @PostMapping
-    public ResponseEntity<InflightEvent> publish(@RequestBody InflightEvent inflightEvent) {
+    public ResponseEntity<Object> publish(@RequestBody InflightEvent inflightEvent) {
         try {
             inflightEvent = publicationManagerService.publish(inflightEvent);
-            return new ResponseEntity(inflightEvent, HttpStatus.CREATED);
+            return new ResponseEntity<Object>(inflightEvent, HttpStatus.CREATED);
         } catch (BrokerException ex) {
             LOGGER.error(ex.getMessage(), ex);
-            return new ResponseEntity(new BrokerExceptionResponse(ex), ex.getHttpStatus());
+            return new ResponseEntity<Object>(new BrokerExceptionResponse(ex), ex.getHttpStatus());
         } catch (Exception ex) {
             LOGGER.error(ex.getMessage(), ex);
-            return new ResponseEntity(new BrokerExceptionResponse(ex), HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<Object>(new BrokerExceptionResponse(ex), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

@@ -227,10 +227,19 @@ public class SubscriptionManagerService {
                     eventExpirationReason = "server 5xx";
                 }
                 else if (inflightEvent.isWebhookClient4xxErrorOccurred()) {
-                    eventExpiredDueToTimeToLiveForWebhookError = isEventExpiredDueToTimeToLiveForWebhookError(inflightEvent, now,
-                            config.getDefaultTimeToLiveInSecondsForWebhookClient4xxError(),
-                            subscription.getTimeToLiveInSecondsForWebhookClient4xxError());
-                    eventExpirationReason = "client 4xx";
+                    if (inflightEvent.getWebhookHttpStatus() == HttpStatus.UNAUTHORIZED.value() ||
+                            inflightEvent.getWebhookHttpStatus() == HttpStatus.FORBIDDEN.value()) {
+                        eventExpiredDueToTimeToLiveForWebhookError = isEventExpiredDueToTimeToLiveForWebhookError(inflightEvent, now,
+                                config.getDefaultTimeToLiveInSecondsForWebhookAuth401Or403Error(),
+                                subscription.getTimeToLiveInSecondsForWebhookAuth401Or403Error());
+                        eventExpirationReason = "auth 401 or 403";
+                    }
+                    else {
+                        eventExpiredDueToTimeToLiveForWebhookError = isEventExpiredDueToTimeToLiveForWebhookError(inflightEvent, now,
+                                config.getDefaultTimeToLiveInSecondsForWebhookClient4xxError(),
+                                subscription.getTimeToLiveInSecondsForWebhookClient4xxError());
+                        eventExpirationReason = "client 4xx";
+                    }
                 }
 
                 if (eventExpiredDueToTimeToLiveForWebhookError) {

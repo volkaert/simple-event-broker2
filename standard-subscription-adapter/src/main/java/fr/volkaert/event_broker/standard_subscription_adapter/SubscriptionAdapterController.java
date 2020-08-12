@@ -23,17 +23,17 @@ public class SubscriptionAdapterController {
     private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionAdapterController.class);
 
     @PostMapping
-    public ResponseEntity<InflightEvent> callWebhook(@RequestBody InflightEvent inflightEvent) {
+    public ResponseEntity<Object> callWebhook(@RequestBody InflightEvent inflightEvent) {
         try {
             InflightEvent returnedInflightEvent = service.callWebhook(inflightEvent);
-            return new ResponseEntity(returnedInflightEvent, HttpStatus.OK);
+            return new ResponseEntity<Object>(returnedInflightEvent, HttpStatus.OK);
         } catch (BrokerException ex) {
             // If error is a BrokerException, the error should already have been logged
             //LOGGER.error(ex.getMessage(), ex);
-            return new ResponseEntity(new BrokerExceptionResponse(ex), ex.getHttpStatus());
+            return new ResponseEntity<Object>(new BrokerExceptionResponse(ex), ex.getHttpStatus());
         } catch (Exception ex) {
             LOGGER.error(ex.getMessage(), ex);
-            return new ResponseEntity(new BrokerExceptionResponse(ex), HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<Object>(new BrokerExceptionResponse(ex), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

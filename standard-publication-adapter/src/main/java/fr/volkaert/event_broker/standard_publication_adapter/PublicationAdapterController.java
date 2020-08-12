@@ -27,16 +27,16 @@ public class PublicationAdapterController {
     private static final Logger LOGGER = LoggerFactory.getLogger(PublicationAdapterController.class);
 
     @PostMapping
-    public ResponseEntity<EventToPublisher> publish(@RequestBody EventFromPublisher eventFromPublisher) {
+    public ResponseEntity<Object> publish(@RequestBody EventFromPublisher eventFromPublisher) {
         try {
             EventToPublisher eventToPublisher = publicationAdapterService.publish(eventFromPublisher);
-            return new ResponseEntity(eventToPublisher, HttpStatus.CREATED);
+            return new ResponseEntity<Object>(eventToPublisher, HttpStatus.CREATED);
         } catch (BrokerException ex) {
             LOGGER.error(ex.getMessage(), ex);
-            return new ResponseEntity(new BrokerExceptionResponse(ex), ex.getHttpStatus());
+            return new ResponseEntity<Object>(new BrokerExceptionResponse(ex), ex.getHttpStatus());
         } catch (Exception ex) {
             LOGGER.error(ex.getMessage(), ex);
-            return new ResponseEntity(new BrokerExceptionResponse(ex), HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<Object>(new BrokerExceptionResponse(ex), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

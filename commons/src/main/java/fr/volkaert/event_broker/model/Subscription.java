@@ -37,4 +37,5 @@ public class Subscription {
     private Long timeToLiveInSecondsForWebhookReadTimeoutError;     // If null or 0, use the defaultTimeToLiveInSecondsForWebhookReadTimeoutError in BrokerConfig
     private Long timeToLiveInSecondsForWebhookServer5xxError;       // If null or 0, use the defaultTimeToLiveInSecondsForWebhookServer5xxError in BrokerConfig
     private Long timeToLiveInSecondsForWebhookClient4xxError;       // If null or 0, use the defaultTimeToLiveInSecondsForWebhookClient4xxError in BrokerConfig
+    private Long timeToLiveInSecondsForWebhookAuth401Or403Error;       // If null or 0, use the defaultTimeToLiveInSecondsForWebhookAuth401Or403Error in BrokerConfig
 }
