@@ -35,4 +35,15 @@ public class SubscriptionAdapterApplication {
         restTemplate.getMessageConverters().add(0, new StringHttpMessageConverter(StandardCharsets.UTF_8));
         return restTemplate;
     }
+
+    @Bean
+    @Qualifier("RestTemplateForOAuth2Issuer")
+    public RestTemplate restTemplateForOAuth2Issuer(RestTemplateBuilder builder) {
+        RestTemplate restTemplate = builder
+                .setConnectTimeout(Duration.ofSeconds(config.getOauth2IssuerConnectTimeoutInSeconds()))
+                .setReadTimeout(Duration.ofSeconds(config.getOauth2IssuerReadTimeoutInSeconds()))
+                .build();
+        restTemplate.getMessageConverters().add(0, new StringHttpMessageConverter(StandardCharsets.UTF_8));
+        return restTemplate;
+    }
 }

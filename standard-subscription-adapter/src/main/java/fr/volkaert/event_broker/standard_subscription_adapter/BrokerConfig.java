@@ -14,4 +14,11 @@ public class BrokerConfig {
 
     private long webhookConnectTimeoutInSeconds;
     private long webhookReadTimeoutInSeconds;
+
+    private String oauth2TokenEndpoint;
+    private String oauth2ClientId;
+    private String oauth2ClientSecret;
+    private long oauth2IssuerConnectTimeoutInSeconds;
+    private long oauth2IssuerReadTimeoutInSeconds;
+
 }

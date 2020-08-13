@@ -61,6 +61,8 @@
         <module>standard-subscription-adapter</module>
         <module>test-subscriber</module>
         <module>publication-gateway</module>
+        <module>test-subscriber-oauth2</module>
+        <module>oauth2-subscription-adapter</module>
     </modules>
 
 </project>

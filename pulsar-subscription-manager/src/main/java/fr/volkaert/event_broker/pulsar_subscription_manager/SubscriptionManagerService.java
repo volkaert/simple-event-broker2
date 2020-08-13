@@ -292,6 +292,10 @@ public class SubscriptionManagerService {
                     config.getAuthClientSecretForSubscriptionAdapter());
             // charset UTF8 has been defined during the creation of RestTemplate
 
+            System.out.println("****************************************");
+            System.out.println("config is " + config);
+            System.out.println("****************************************");
+
             HttpEntity<InflightEvent> request = new HttpEntity<>(inflightEvent, httpHeaders);
 
             LOGGER.debug("Calling the Subscription Adapter at {}. Event is {}.",

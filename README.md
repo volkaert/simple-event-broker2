@@ -216,6 +216,15 @@ curl --header "Content-Type: application/json" \
   http://localhost:8081/events
 ```
 
+### Test with subscriber webhooks secured using OAuth2 
+
+```
+curl --header "Content-Type: application/json" \
+  --request POST \
+  --data '{"publicationCode": "OAuth2Test-PUB","payload": { "message": "NominalTest with OAuth2" }, "timeToLiveInSeconds": 30 }' \
+  http://localhost:8081/events
+```
+
 
 ## Troubleshooting
 To kill a process that runs on a given port:
