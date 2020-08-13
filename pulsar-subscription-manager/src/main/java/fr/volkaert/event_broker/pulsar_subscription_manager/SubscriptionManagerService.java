@@ -98,7 +98,7 @@ public class SubscriptionManagerService {
                         .messageListener((cons, msg) ->  {
                             try {
                                 handlePulsarMessageAndAck(cons, msg);
-                            } catch (Exception ex) {
+                            } catch (Exception ex) {    // should never happen...
                                 LOGGER.error("Error while handling Pulsar message", ex);
                             }
                         })
@@ -260,6 +260,15 @@ public class SubscriptionManagerService {
                 return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
             }
 
+            if (! (inflightEvent.getWebhookHttpStatus() >= 200 && inflightEvent.getWebhookHttpStatus() < 300)) {
+                LOGGER.warn("Negative ack (due to unsuccessful http status {} returned by the webhook) for message {}. Event is {}.",
+                        inflightEvent.getWebhookHttpStatus(), message.getMessageId(), inflightEvent.toShortLog());
+                consumer.negativeAcknowledge(message);
+                metricsService.registerFailedDeliveryAttempt(
+                        inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
+                return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
+            }
+
             // If we reached this line, everything seems fine, so we can ack the message
             LOGGER.debug("Ack for message {}. Event is {}.", message.getMessageId(), inflightEvent.toShortLog());
             consumer.acknowledge(message);
@@ -281,7 +290,6 @@ public class SubscriptionManagerService {
 
     // This operation can throw a BrokerException
     private InflightEvent callSubscriptionAdapter(InflightEvent inflightEvent) {
-        ResponseEntity<InflightEvent> response = null;
         String subscriptionAdapterUrl = config.getSubscriptionAdapterUrl() + "/webhooks";
 
         try {
@@ -292,15 +300,12 @@ public class SubscriptionManagerService {
                     config.getAuthClientSecretForSubscriptionAdapter());
             // charset UTF8 has been defined during the creation of RestTemplate
 
-            System.out.println("****************************************");
-            System.out.println("config is " + config);
-            System.out.println("****************************************");
-
             HttpEntity<InflightEvent> request = new HttpEntity<>(inflightEvent, httpHeaders);
 
             LOGGER.debug("Calling the Subscription Adapter at {}. Event is {}.",
                     subscriptionAdapterUrl, inflightEvent.cloneWithoutSensitiveData());
-            response = restTemplate.exchange(subscriptionAdapterUrl, HttpMethod.POST, request, InflightEvent.class);
+            ResponseEntity<InflightEvent> response = restTemplate.exchange(
+                    subscriptionAdapterUrl, HttpMethod.POST, request, InflightEvent.class);
             LOGGER.debug("The Subscription Adapter returned the http status code {}. Event is {}.",
                     response.getStatusCode(), inflightEvent.toShortLog());
 
