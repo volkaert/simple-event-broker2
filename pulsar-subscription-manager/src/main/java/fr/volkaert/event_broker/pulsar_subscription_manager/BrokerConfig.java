@@ -16,6 +16,7 @@ public class BrokerConfig {
     private long webhookReadTimeoutInSeconds;
 
     private String pulsarServiceUrl;
+    private int pulsarListenerThreadCount;
 
     private String subscriptionAdapterUrl;
     private String authClientIdForSubscriptionAdapter;

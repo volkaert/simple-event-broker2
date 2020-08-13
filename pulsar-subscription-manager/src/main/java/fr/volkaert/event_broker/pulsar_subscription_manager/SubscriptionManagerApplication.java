@@ -45,6 +45,7 @@ public class SubscriptionManagerApplication {
     PulsarClient createPulsarClient() throws PulsarClientException {
         PulsarClient pulsarClient = PulsarClient.builder()
                 .serviceUrl(config.getPulsarServiceUrl())
+                .listenerThreads(config.getPulsarListenerThreadCount())
                 .build();
         return pulsarClient;
     }
