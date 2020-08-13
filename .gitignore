@@ -1,4 +1,5 @@
 credentials.txt
+set-credentials.sh
 
 grafana-data/
 
