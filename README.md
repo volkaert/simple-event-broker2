@@ -35,9 +35,9 @@ component by another.
 The `Catalog` is in charge of the management of the objects `EventType`, `Publication` and `Subscription`. 
 Most of the other components require access to the Catalog to operate.
  
-The `Publication Gateway` is the entry point to publish an event. It is based on a `Spring Cloud Gateway`. Automatic 
-retry features will be added in the future to ensure no interruption service even in the case of the release of a new
-version of a `PublicationAdapter` or `PublicationManager`.
+The `Publication Gateway` is the entry point to publish an event. It is based on a `Spring Cloud Gateway`. It offers 
+automatic retry feature to ensure no interruption service even in the case of the release of a new version of 
+a `PublicationAdapter`.
  
 
 ## Event flow

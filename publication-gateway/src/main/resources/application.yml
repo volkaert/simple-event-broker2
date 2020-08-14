@@ -10,6 +10,16 @@ spring:
           uri: http://localhost:8082
           predicates:
           - Path=/events
+          filters:
+            - name: Retry
+              args:
+                retries: 12
+                methods: POST
+                backoff:
+                  firstBackoff: 5s
+                  maxBackoff: 60s
+                  factor: 1
+                  basedOnPreviousValue: true
 management:
   endpoints:
     web:
