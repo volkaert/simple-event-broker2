@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 @Service
@@ -28,32 +29,23 @@ public class PublicationAdapterService {
     public EventToPublisher publish(EventFromPublisher eventFromPublisher) {
         LOGGER.debug("Event received. Event is {}.", eventFromPublisher);
 
-        InflightEvent inflightEvent = eventFromPublisher.toInflightEvent();
-        ResponseEntity<InflightEvent> response = null;
         String publicationManagerUrl = config.getPublicationManagerUrl() + "/events";
 
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+        httpHeaders.setBasicAuth(
+                config.getAuthClientIdForPublicationManager(),
+                config.getAuthClientSecretForPublicationManager());
+        // charset UTF8 has been defined during the creation of RestTemplate
+
+        InflightEvent inflightEvent = eventFromPublisher.toInflightEvent();
+        HttpEntity<InflightEvent> request = new HttpEntity<>(inflightEvent, httpHeaders);
+
         try {
-            HttpHeaders httpHeaders = new HttpHeaders();
-            httpHeaders.setContentType(MediaType.APPLICATION_JSON);
-            httpHeaders.setBasicAuth(
-                    config.getAuthClientIdForPublicationManager(),
-                    config.getAuthClientSecretForPublicationManager());
-            // charset UTF8 has been defined during the creation of RestTemplate
-
-            HttpEntity<InflightEvent> request = new HttpEntity<>(inflightEvent, httpHeaders);
-
             LOGGER.debug("Calling the Publication Manager at {}. Event is {}.", publicationManagerUrl, inflightEvent);
-            response = restTemplate.exchange(publicationManagerUrl, HttpMethod.POST, request, InflightEvent.class);
+            ResponseEntity<InflightEvent> response = restTemplate.exchange(publicationManagerUrl, HttpMethod.POST, request, InflightEvent.class);
             LOGGER.debug("The Publication Manager returned the http status code {}. Event is {}.",
                     response.getStatusCode(), inflightEvent.toShortLog());
-
-            if (! response.getStatusCode().is2xxSuccessful()) {
-                String msg = String.format("The Publication Manager returned the unsuccessful http status code %s. Event is %s.",
-                        response.getStatusCode(), inflightEvent.toShortLog());
-                LOGGER.error(msg);
-                BrokerException bex = new BrokerException(response.getStatusCode(), msg, publicationManagerUrl);
-                throw bex;
-            }
 
             InflightEvent returnedInflighEvent = response.getBody();
             LOGGER.debug("The Publication Manager returned the event {}", returnedInflighEvent);
@@ -62,15 +54,38 @@ public class PublicationAdapterService {
             return eventToPublisher;
 
         } catch (HttpClientErrorException ex) {
-            String msg = String.format("Error while calling the Publication Manager at %s. Event is %s.",
-                    publicationManagerUrl, inflightEvent.toShortLog());
+            String msg = String.format("Client error %s while calling the Publication Manager at %s. Event is %s.",
+                    ex.getStatusCode(), publicationManagerUrl, inflightEvent.toShortLog());
             LOGGER.error(msg, ex);
             throw new BrokerException(ex.getStatusCode(), msg, ex, publicationManagerUrl);
-        } catch (Exception ex) {
-            String msg = String.format("Error while handling the call to the Publication Manager at %s. Event is %s.",
-                    publicationManagerUrl, inflightEvent.toShortLog());
+
+        } catch (HttpServerErrorException ex) {
+            String msg = String.format("Server error %s while calling the Publication Manager at %s. Event is %s.",
+                    ex.getStatusCode(), publicationManagerUrl, inflightEvent.toShortLog());
             LOGGER.error(msg, ex);
-            throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex, publicationManagerUrl);
+            throw new BrokerException(ex.getStatusCode(), msg, ex, publicationManagerUrl);
+
+        } catch (Exception ex) {
+            if (ex.getMessage().contains("Connection refused")) {
+                String msg = String.format("Connection Refused error while calling the Publication Manager at %s. Event is %s.",
+                        publicationManagerUrl, inflightEvent.toShortLog());
+                LOGGER.error(msg, ex);
+                throw new BrokerException(HttpStatus.BAD_GATEWAY, msg, ex, publicationManagerUrl);
+            }
+
+            else if (ex.getMessage().contains("Read timed out")) {
+                String msg = String.format("Read Timeout error while calling the Publication Manager at %s. Event is %s.",
+                        inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
+                LOGGER.error(msg, ex);
+                throw new BrokerException(HttpStatus.GATEWAY_TIMEOUT, msg, ex, publicationManagerUrl);
+            }
+
+            else {
+                String msg = String.format("Error while calling Publication Manager at %s. Event is %s.",
+                        publicationManagerUrl, inflightEvent.toShortLog());
+                LOGGER.error(msg, ex);
+                throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex, publicationManagerUrl);
+            }
         }
     }
 }

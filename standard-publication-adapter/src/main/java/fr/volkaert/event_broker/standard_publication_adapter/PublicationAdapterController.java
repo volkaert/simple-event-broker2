@@ -32,7 +32,8 @@ public class PublicationAdapterController {
             EventToPublisher eventToPublisher = publicationAdapterService.publish(eventFromPublisher);
             return new ResponseEntity<Object>(eventToPublisher, HttpStatus.CREATED);
         } catch (BrokerException ex) {
-            LOGGER.error(ex.getMessage(), ex);
+            // If error is a BrokerException, the error should already have been logged
+            //LOGGER.error(ex.getMessage(), ex);
             return new ResponseEntity<Object>(new BrokerExceptionResponse(ex), ex.getHttpStatus());
         } catch (Exception ex) {
             LOGGER.error(ex.getMessage(), ex);

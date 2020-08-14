@@ -291,15 +291,16 @@ public class SubscriptionManagerService {
     private InflightEvent callSubscriptionAdapter(InflightEvent inflightEvent) {
         String subscriptionAdapterUrl = config.getSubscriptionAdapterUrl() + "/webhooks";
 
-        try {
-            HttpHeaders httpHeaders = new HttpHeaders();
-            httpHeaders.setContentType(MediaType.APPLICATION_JSON);
-            httpHeaders.setBasicAuth(
-                    config.getAuthClientIdForSubscriptionAdapter(),
-                    config.getAuthClientSecretForSubscriptionAdapter());
-            // charset UTF8 has been defined during the creation of RestTemplate
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+        httpHeaders.setBasicAuth(
+                config.getAuthClientIdForSubscriptionAdapter(),
+                config.getAuthClientSecretForSubscriptionAdapter());
+        // charset UTF8 has been defined during the creation of RestTemplate
 
-            HttpEntity<InflightEvent> request = new HttpEntity<>(inflightEvent, httpHeaders);
+        HttpEntity<InflightEvent> request = new HttpEntity<>(inflightEvent, httpHeaders);
+
+        try {
 
             LOGGER.debug("Calling the Subscription Adapter at {}. Event is {}.",
                     subscriptionAdapterUrl, inflightEvent.cloneWithoutSensitiveData());
@@ -317,11 +318,13 @@ public class SubscriptionManagerService {
                     ex.getStatusCode(), subscriptionAdapterUrl, inflightEvent.toShortLog());
             LOGGER.error(msg, ex);
             throw new BrokerException(ex.getStatusCode(), msg, ex, subscriptionAdapterUrl);
+
         } catch (HttpServerErrorException ex) {
             String msg = String.format("Server error %s while calling the Subscription Adapter at %s. Event is %s.",
                     ex.getStatusCode(), subscriptionAdapterUrl, inflightEvent.toShortLog());
             LOGGER.error(msg, ex);
             throw new BrokerException(ex.getStatusCode(), msg, ex, subscriptionAdapterUrl);
+
         } catch (Exception ex) {
             if (ex.getMessage().contains("Connection refused")) {
                 String msg = String.format("Connection Refused error while calling the Subscription Adapter at %s. Event is %s.",
@@ -329,12 +332,14 @@ public class SubscriptionManagerService {
                 LOGGER.error(msg, ex);
                 throw new BrokerException(HttpStatus.BAD_GATEWAY, msg, ex, subscriptionAdapterUrl);
             }
+
             else if (ex.getMessage().contains("Read timed out")) {
                 String msg = String.format("Read Timeout error while calling the Subscription Adapter at %s. Event is %s.",
                         subscriptionAdapterUrl, inflightEvent.toShortLog());
                 LOGGER.error(msg, ex);
                 throw new BrokerException(HttpStatus.GATEWAY_TIMEOUT, msg, ex, subscriptionAdapterUrl);
             }
+
             else {
                 String msg = String.format("Error while calling the Subscription Adapter at %s. Event is %s.",
                         subscriptionAdapterUrl, inflightEvent.toShortLog());

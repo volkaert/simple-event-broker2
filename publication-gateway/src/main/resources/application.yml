@@ -16,7 +16,7 @@ spring:
                 retries: 12
                 methods: POST
                 exceptions: java.io.IOException
-                statuses:
+                statuses: BAD_GATEWAY
                 backoff:
                   firstBackoff: 5s
                   maxBackoff: 60s

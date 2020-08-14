@@ -152,7 +152,7 @@ public class SubscriptionAdapterService {
 
         } catch (Exception ex) {
             if (ex.getMessage().contains("Connection refused")) {
-                String msg = String.format("Connection Refused error while handling the call to webhook at %s. Event is %s.",
+                String msg = String.format("Connection Refused error while calling the webhook at %s. Event is %s.",
                         inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
                 LOGGER.error(msg, ex);
 
@@ -163,7 +163,7 @@ public class SubscriptionAdapterService {
             }
 
             else if (ex.getMessage().contains("Read timed out")) {
-                String msg = String.format("Read Timeout error while handling the call to the webhook at %s. Event is %s.",
+                String msg = String.format("Read Timeout error while calling the webhook at %s. Event is %s.",
                         inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
                 LOGGER.error(msg, ex);
 
@@ -174,7 +174,7 @@ public class SubscriptionAdapterService {
             }
 
             else {
-                String msg = String.format("Error while handling the call to the webhook at %s. Event is %s.",
+                String msg = String.format("Error while calling the webhook at %s. Event is %s.",
                         inflightEvent.getWebhookUrl(), inflightEvent.toShortLog());
                 LOGGER.error(msg, ex);
 

@@ -31,7 +31,8 @@ public class PublicationManagerController {
             inflightEvent = publicationManagerService.publish(inflightEvent);
             return new ResponseEntity<Object>(inflightEvent, HttpStatus.CREATED);
         } catch (BrokerException ex) {
-            LOGGER.error(ex.getMessage(), ex);
+            // If error is a BrokerException, the error should already have been logged
+            //LOGGER.error(ex.getMessage(), ex);
             return new ResponseEntity<Object>(new BrokerExceptionResponse(ex), ex.getHttpStatus());
         } catch (Exception ex) {
             LOGGER.error(ex.getMessage(), ex);
