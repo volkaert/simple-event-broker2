@@ -259,6 +259,9 @@ public class SubscriptionManagerService {
                 return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
             }
 
+            // The following lines handle the special case where the webhook returned a 3xx HTTP status code (Redirect)
+            // for example because the webhook returned a redirect to a login page (it can happen with default config
+            // of some security modules)
             if (! (inflightEvent.getWebhookHttpStatus() >= 200 && inflightEvent.getWebhookHttpStatus() < 300)) {
                 LOGGER.warn("Negative ack (due to unsuccessful http status {} returned by the webhook) for message {}. Event is {}.",
                         inflightEvent.getWebhookHttpStatus(), message.getMessageId(), inflightEvent.toShortLog());
