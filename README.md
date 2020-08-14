@@ -9,7 +9,7 @@ The v2 version uses SpringBoot (and not Quarkus) and Apache Pulsar (and not a cu
 - Standard Publication Adapter. In dev mode, it uses port 8082.
 - Pulsar Publication Manager. In dev mode, it uses port 8083.
 - Pulsar Subscription Manager. In dev mode, it uses port 8084.
-- Subscription Gateway. In dev mode, it uses port 8085.
+- Subscription Gateway (optional). In dev mode, it uses port 8085.
 - Standard Subscription Adapter. In dev mode, it uses port 8086.
 - Catalog. In dev mode, it uses port 8089.
 - Test/Fake Subscriber. In dev mode, it uses port 8099.
@@ -47,7 +47,7 @@ version of a `PublicationAdapter` or `PublicationManager`.
 4. Pulsar Publication Manager
 5. Apache Pulsar
 6. Pulsar Subscription Manager
-7. Subscription Gateway
+7. Subscription Gateway (optional)
 8. Standard Subscription Adapter
 9. Event Subscriber
 
@@ -304,7 +304,7 @@ But DefaultImplementation is an internal class of Pulsar (in the internal packag
 a private class of a library.
 
 - The number of listener threads on the message consumer side is set to 1 by default. With such setting, if a message 
-listener take some time to process the message, all the next messages are waiting, even if those messages are on 
+listener takes some time to process a message, all the next messages are waiting, even if those messages are on 
 different topics (and thus are not related, so they could be delivered concurrently; the delivery order must be guaranteed
 for a given topic but not among all the topics). We have powerful multi-core computers, but with this default setting 
 all the messages are processed sequentially which is not efficient. In this project, I set the number of listener threads
