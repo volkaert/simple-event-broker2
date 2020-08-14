@@ -26,7 +26,6 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 @Service
 @Configuration
@@ -94,7 +93,7 @@ public class SubscriptionManagerService {
                         .topic(eventTypeCode)
                         .subscriptionName(subscriptionCode)
                         .subscriptionType(SubscriptionType.Failover)
-                        .ackTimeout(config.getWebhookReadTimeoutInSeconds(), TimeUnit.SECONDS)
+                        //.ackTimeout(config.getReadTimeoutInSecondsForSubscriptionAdapter(), TimeUnit.SECONDS)
                         .messageListener((cons, msg) ->  {
                             try {
                                 handlePulsarMessageAndAck(cons, msg);

@@ -1,5 +1,7 @@
 package fr.volkaert.event_broker.standard_subscription_adapter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
@@ -21,6 +23,8 @@ public class SubscriptionAdapterApplication {
     @Autowired
     BrokerConfig config;
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionAdapterApplication.class);
+
     public static void main(String[] args) {
         SpringApplication.run(SubscriptionAdapterApplication.class, args);
     }
@@ -28,9 +32,11 @@ public class SubscriptionAdapterApplication {
     @Bean
     @Qualifier("RestTemplateForWebhooks")
     public RestTemplate restTemplateForWebhooks(RestTemplateBuilder builder) {
+        LOGGER.info("Timeouts for webhooks: connect={}, read={}",
+                config.getConnectTimeoutInSecondsForWebhooks(), config.getReadTimeoutInSecondsForWebhooks());
         RestTemplate restTemplate = builder
-            .setConnectTimeout(Duration.ofSeconds(config.getWebhookConnectTimeoutInSeconds()))
-            .setReadTimeout(Duration.ofSeconds(config.getWebhookReadTimeoutInSeconds()))
+            .setConnectTimeout(Duration.ofSeconds(config.getConnectTimeoutInSecondsForWebhooks()))
+            .setReadTimeout(Duration.ofSeconds(config.getReadTimeoutInSecondsForWebhooks()))
             .build();
         restTemplate.getMessageConverters().add(0, new StringHttpMessageConverter(StandardCharsets.UTF_8));
         return restTemplate;
@@ -39,9 +45,11 @@ public class SubscriptionAdapterApplication {
     @Bean
     @Qualifier("RestTemplateForOAuth2Issuer")
     public RestTemplate restTemplateForOAuth2Issuer(RestTemplateBuilder builder) {
+        LOGGER.info("Timeouts for OAuth2 issuer: connect={}, read={}",
+                config.getConnectTimeoutInSecondsForOAuth2Issuer(), config.getReadTimeoutInSecondsForOAuth2Issuer());
         RestTemplate restTemplate = builder
-                .setConnectTimeout(Duration.ofSeconds(config.getOauth2IssuerConnectTimeoutInSeconds()))
-                .setReadTimeout(Duration.ofSeconds(config.getOauth2IssuerReadTimeoutInSeconds()))
+                .setConnectTimeout(Duration.ofSeconds(config.getConnectTimeoutInSecondsForOAuth2Issuer()))
+                .setReadTimeout(Duration.ofSeconds(config.getReadTimeoutInSecondsForOAuth2Issuer()))
                 .build();
         restTemplate.getMessageConverters().add(0, new StringHttpMessageConverter(StandardCharsets.UTF_8));
         return restTemplate;

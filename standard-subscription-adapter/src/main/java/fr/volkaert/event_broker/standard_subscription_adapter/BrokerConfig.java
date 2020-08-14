@@ -12,13 +12,13 @@ public class BrokerConfig {
     private String componentTypeName;   // Useful for metrics (to group them by component type)
     private String componentInstanceId; // Useful for metrics (to distinguish instances of the same component type)
 
-    private long webhookConnectTimeoutInSeconds;
-    private long webhookReadTimeoutInSeconds;
+    private long connectTimeoutInSecondsForWebhooks;
+    private long readTimeoutInSecondsForWebhooks;
 
     private String oauth2TokenEndpoint;
     private String oauth2ClientId;
     private String oauth2ClientSecret;
-    private long oauth2IssuerConnectTimeoutInSeconds;
-    private long oauth2IssuerReadTimeoutInSeconds;
+    private long connectTimeoutInSecondsForOAuth2Issuer;
+    private long readTimeoutInSecondsForOAuth2Issuer;
 
 }

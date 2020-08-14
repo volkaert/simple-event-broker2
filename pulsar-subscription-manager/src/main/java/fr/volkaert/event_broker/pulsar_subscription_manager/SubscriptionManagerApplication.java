@@ -53,9 +53,11 @@ public class SubscriptionManagerApplication {
     @Bean
     @Qualifier("RestTemplateForSubscriptionAdapter")
     public RestTemplate restTemplateForSubscriptionAdapter(RestTemplateBuilder builder) {
+        LOGGER.info("Timeouts for Subscription Adapter: connect={}, read={}",
+                config.getConnectTimeoutInSecondsForSubscriptionAdapter(), config.getReadTimeoutInSecondsForSubscriptionAdapter());
         RestTemplate restTemplate = builder
-            .setConnectTimeout(Duration.ofSeconds(config.getWebhookConnectTimeoutInSeconds()))
-            .setReadTimeout(Duration.ofSeconds(config.getWebhookReadTimeoutInSeconds()))
+            .setConnectTimeout(Duration.ofSeconds(config.getConnectTimeoutInSecondsForSubscriptionAdapter()))
+            .setReadTimeout(Duration.ofSeconds(config.getReadTimeoutInSecondsForSubscriptionAdapter()))
             .build();
         restTemplate.getMessageConverters().add(0, new StringHttpMessageConverter(StandardCharsets.UTF_8));
         return restTemplate;

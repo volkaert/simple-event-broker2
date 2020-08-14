@@ -12,8 +12,8 @@ public class BrokerConfig {
     private String componentTypeName;   // Useful for metrics (to group them by component type)
     private String componentInstanceId; // Useful for metrics (to distinguish instances of the same component type)
 
-    private long webhookConnectTimeoutInSeconds;
-    private long webhookReadTimeoutInSeconds;
+    private long connectTimeoutInSecondsForSubscriptionAdapter;
+    private long readTimeoutInSecondsForSubscriptionAdapter;
 
     private String pulsarServiceUrl;
     private int pulsarListenerThreadCount;

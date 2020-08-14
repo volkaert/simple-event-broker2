@@ -12,8 +12,8 @@ public class BrokerConfig {
     private String componentTypeName;   // Useful for metrics (to group them by component type)
     private String componentInstanceId; // Useful for metrics (to distinguish instances of the same component type)
 
-    private long connectTimeoutInSeconds;
-    private long readTimeoutInSeconds;
+    private long connectTimeoutInSecondsForPublicationManager;
+    private long readTimeoutInSecondsForPublicationManager;
 
     private String publicationManagerUrl;
     private String authClientIdForPublicationManager;
