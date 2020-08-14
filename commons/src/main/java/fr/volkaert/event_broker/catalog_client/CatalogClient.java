@@ -66,8 +66,9 @@ public class CatalogClient {
     public EventType getEventTypeOrThrowException(String code) {
         EventType eventType = getEventType(code);
         if (eventType == null) {
-            throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    String.format("Invalid event type code '%s'", code));
+            String msg = String.format("Invalid event type code '%s'", code);
+            LOGGER.error(msg);
+            throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg);
         }
         return eventType;
     }
@@ -89,8 +90,9 @@ public class CatalogClient {
     public Publication getPublicationOrThrowException(String code) {
         Publication publication = getPublication(code);
         if (publication == null) {
-            throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    String.format("Invalid publication code '%s'", code));
+            String msg = String.format("Invalid publication code '%s'", code);
+            LOGGER.error(msg);
+            throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg);
         }
         return publication;
     }
@@ -112,8 +114,9 @@ public class CatalogClient {
     public Subscription getSubscriptionOrThrowException(String code) {
         Subscription subscription = getSubscription(code);
         if (subscription == null) {
-            throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    String.format("Invalid subscription code '%s'", code));
+            String msg = String.format("Invalid subscription code '%s'", code);
+            LOGGER.error(msg);
+            throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg);
         }
         return subscription;
     }

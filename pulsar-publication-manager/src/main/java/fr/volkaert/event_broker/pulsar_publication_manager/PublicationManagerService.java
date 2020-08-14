@@ -56,17 +56,23 @@ public class PublicationManagerService {
         String publicationCode = inflightEvent.getPublicationCode();
         if (publicationCode == null || publicationCode.trim().equals("")) {
             metricsService.registerPublicationWithMissingPublicationCode();
-            throw new BrokerException(HttpStatus.BAD_REQUEST, "Publication code is missing");
+            String msg = String.format("Publication code is missing");
+            LOGGER.error(msg);
+            throw new BrokerException(HttpStatus.BAD_REQUEST, msg);
         }
+
         Publication publication = catalog.getPublication(publicationCode);
         if (publication == null) {
             metricsService.registerPublicationWithInvalidPublicationCode(publicationCode);
-                throw new BrokerException(HttpStatus.BAD_REQUEST,
-                        String.format("Invalid publication code '%s'", publicationCode));
+            String msg = String.format("Invalid publication code '%s'", publicationCode);
+            LOGGER.error(msg);
+            throw new BrokerException(HttpStatus.BAD_REQUEST, msg);
         }
+
         if (! publication.isActive()) {
-            throw new BrokerException(HttpStatus.BAD_REQUEST,
-                    String.format("Inactive publication '%s'", publicationCode));
+            String msg = String.format("Inactive publication '%s'", publicationCode);
+            LOGGER.warn(msg);
+            throw new BrokerException(HttpStatus.BAD_REQUEST, msg);
         }
 
         String eventTypeCode = publication.getEventTypeCode();
