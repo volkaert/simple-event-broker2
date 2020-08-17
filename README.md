@@ -103,6 +103,57 @@ To publish an event for one of those predefined event types samples named `Xxxxx
 `XxxxxTest-PUB` when publishing the event on the endpoint `/events`.
 
 
+## Error management (with HTTP status codes)
+
+The `Publication Adapter` returns the following HTTP status codes:
+- `201 CREATED` if the publication succeeded (the `Publication Manager` returned a `2xx success` code)
+- The status code returned by the `Publication Manager` if it returned a `4xx client error` or a `5xx server error` code
+- `502 BAD GATEWAY` if the connection to the `Publication Manager` failed (you can use the 
+`broker.connect-timeout-in-seconds-for-publication-manager` property to set an appropriate timeout)
+- `504 GATEWAY TIMEOUT` if the`Publication Manager` did not respond within the allotted time (you can use the 
+`broker.read-timeout-in-seconds-for-publication-manager` property to set an appropriate timeout)
+- `500 INTERNAL SERVER ERROR` for unexpected error
+ 
+The `Publication Manager` returns the following HTTP status codes:
+- `201 CREATED` if the publication succeeded (the event was sent to Pulsar successfully)
+- `400 BAD REQUEST` if the publication code is missing in the published event
+- `400 BAD REQUEST` if the publication code is invalid (no Publication found with this code)
+- `400 BAD REQUEST` if the publication is inactive
+- `500 INTERNAL SERVER ERROR` if no Event Type is associated with this Publication
+- `500 INTERNAL SERVER ERROR` if the creation of a Pulsar producer failed
+- `500 INTERNAL SERVER ERROR` if the sending of the event to Pulsar failed
+- `500 INTERNAL SERVER ERROR` for unexpected error
+
+The `Subscription Adapter` returns the following HTTP status codes:
+- `200 OK` and `InflightEvent.webhookHttpStatus` set with the status code returned by the webhook if the call to the webhook succeeded (the webhook returned a `2xx success`code)
+- `200 OK` and `InflightEvent.webhookHttpStatus` set with the status code returned by the webhook if it returned a `4xx client error` or a `5xx server error` code
+- `200 OK` and `InflightEvent.webhookHttpStatus` set with the status code `502 BAD GATEWAY` if the connection to the webhook failed
+(you can use the `broker.connect-timeout-in-seconds-for-webhooks` property to set an appropriate timeout)
+- `200 OK` and `InflightEvent.webhookHttpStatus` set with the status code `504 GATEWAY TIMEOUT` if webhook did not respond within the allotted time 
+(you can use the `broker.read-timeout-in-seconds-for-webhooks` property to set an appropriate timeout)
+- `401 UNAUTHORIZED` if the OAuth2 token could not be delivered (bad credentials, bad scope, access to the OAuth2 Authorization Server failed... )   
+- `500 INTERNAL SERVER ERROR` if credentials are missing (for BasicAuth) or scope is missing (for OAuth2)
+- `500 INTERNAL SERVER ERROR` for unexpected error
+
+In the `Subscription Manager`, a Pulsar message is acknowledged if:
+- the event has expired
+- the Subscription is inactive
+- The Event Type is inactive
+- The channel of the event and the channel of the subscription do not match
+- the `Subscription Adapter` returned `200 OK` with `InflightEvent.webhookHttpStatus` set with a `2xx success` code
+
+In the `Subscription Manager`, a Pulsar message is *negatively* acknowledged (so it will be redelivered) if:
+- the `Subscription Adapter` returned a connection error or a read timeout error or a 4xx client error or a 5xx server error
+when calling the webhook (the error when calling the webhook is reported using the `InflightEvent.webhookHttpStatus` attribute, 
+NOT with the HTTP status code returned by the `Subscription Adapter`)
+- the connection to the `Subscription Adapter` failed 
+(you can use the `broker.connect-timeout-in-seconds-for-subscription-adapter` property to set an appropriate timeout)
+- the `Subscription Adapter` did not respond within the allotted time (you can use the 
+`broker.read-timeout-in-seconds-for-subscription-adapter` property to set an appropriate timeout)
+- the `Subscription Adapter` returned a 4xx client error or a 5xx server error code
+- an unexpected error occurred
+ 
+
 ## Install and run Apache Pulsar
 
 ```
