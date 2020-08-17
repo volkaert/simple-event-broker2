@@ -18,6 +18,7 @@ import org.springframework.http.*;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -295,10 +296,17 @@ public class SubscriptionManagerService {
         String subscriptionAdapterUrl = config.getSubscriptionAdapterUrl() + "/webhooks";
 
         HttpHeaders httpHeaders = new HttpHeaders();
+
         httpHeaders.setContentType(MediaType.APPLICATION_JSON);
-        httpHeaders.setBasicAuth(
-                config.getAuthClientIdForSubscriptionAdapter(),
-                config.getAuthClientSecretForSubscriptionAdapter());
+
+        if (!StringUtils.isEmpty(config.getAuthClientIdForSubscriptionAdapter()) && !StringUtils.isEmpty(config.getAuthClientSecretForSubscriptionAdapter())) {
+            httpHeaders.setBasicAuth(
+                    config.getAuthClientIdForSubscriptionAdapter(),
+                    config.getAuthClientSecretForSubscriptionAdapter());
+        } else {
+            LOGGER.warn("No Basic Auth credentials provided to access the Subscription Adapter");
+        }
+
         // charset UTF8 has been defined during the creation of RestTemplate
 
         HttpEntity<InflightEvent> request = new HttpEntity<>(inflightEvent, httpHeaders);

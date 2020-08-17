@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -32,10 +33,17 @@ public class PublicationAdapterService {
         String publicationManagerUrl = config.getPublicationManagerUrl() + "/events";
 
         HttpHeaders httpHeaders = new HttpHeaders();
+
         httpHeaders.setContentType(MediaType.APPLICATION_JSON);
-        httpHeaders.setBasicAuth(
-                config.getAuthClientIdForPublicationManager(),
-                config.getAuthClientSecretForPublicationManager());
+
+        if (!StringUtils.isEmpty(config.getAuthClientIdForPublicationManager()) && !StringUtils.isEmpty(config.getAuthClientSecretForPublicationManager())) {
+            httpHeaders.setBasicAuth(
+                    config.getAuthClientIdForPublicationManager(),
+                    config.getAuthClientSecretForPublicationManager());
+        } else {
+            LOGGER.warn("No Basic Auth credentials provided to access the Publication Manager");
+        }
+
         // charset UTF8 has been defined during the creation of RestTemplate
 
         InflightEvent inflightEvent = eventFromPublisher.toInflightEvent();

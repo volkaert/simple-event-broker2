@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -43,7 +44,7 @@ public class SubscriptionAdapterService {
 
         String authMethod = inflightEvent.getAuthMethod() != null ? inflightEvent.getAuthMethod().trim() : "basicauth";
         if (authMethod.equalsIgnoreCase("basicauth")) {
-            if (inflightEvent.getAuthClientId() != null && inflightEvent.getAuthClientSecret() != null) {
+            if (!StringUtils.isEmpty(inflightEvent.getAuthClientId()) && !StringUtils.isEmpty(inflightEvent.getAuthClientSecret())) {
                 httpHeaders.setBasicAuth(inflightEvent.getAuthClientId(), inflightEvent.getAuthClientSecret());
             }
             else {
@@ -54,7 +55,7 @@ public class SubscriptionAdapterService {
             }
         }
         else if (authMethod.equalsIgnoreCase("oauth2")) {
-            if (inflightEvent.getAuthScope() != null) {
+            if (!StringUtils.isEmpty(inflightEvent.getAuthScope())) {
                 try {
                     String accessToken = getOAuth2AccessToken(inflightEvent.getAuthScope());
                     httpHeaders.setBearerAuth(accessToken);
