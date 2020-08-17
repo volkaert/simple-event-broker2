@@ -150,7 +150,7 @@ NOT with the HTTP status code returned by the `Subscription Adapter`)
 (you can use the `broker.connect-timeout-in-seconds-for-subscription-adapter` property to set an appropriate timeout)
 - the `Subscription Adapter` did not respond within the allotted time (you can use the 
 `broker.read-timeout-in-seconds-for-subscription-adapter` property to set an appropriate timeout)
-- the `Subscription Adapter` returned a 4xx client error or a 5xx server error code
+- the `Subscription Adapter` returned a `4xx client error` or a `5xx server error` code
 - an unexpected error occurred
  
 
@@ -250,7 +250,7 @@ curl --header "Content-Type: application/json" \
 In this scenario, there are 1 up & healthy subscription but 1 up & slow subscription which processes the event in 2 seconds, 
 so for each published event, there are 2 successful deliveries, but one delivery is slow.
 
-If necessary, use the `broker.webhook-read-timeout-in-seconds` property (default is 10) to set an appropriate timeout.
+If necessary, use the `broker.read-timeout-in-seconds-for-webhooks` property (default is 10) to set an appropriate timeout.
 ```
 curl --header "Content-Type: application/json" \
   --request POST \
@@ -262,7 +262,7 @@ curl --header "Content-Type: application/json" \
 In this scenario, there are 1 up & healthy subscription but 1 up & too slow subscription which processes the event in 60 seconds, 
 so for each published event, there are 1 successful delivery and 1 failed delivery (failed because of the timeout).
 
-If necessary, use the `broker.webhook-read-timeout-in-seconds` property (default is 10) to set an appropriate timeout.
+If necessary, use the `broker.read-timeout-in-seconds-for-webhooks` property (default is 10) to set an appropriate timeout.
 ```
 curl --header "Content-Type: application/json" \
   --request POST \
