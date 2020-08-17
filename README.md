@@ -284,24 +284,27 @@ bin/pulsar-admin namespaces set-schema-compatibility-strategy --compatibility AL
 So far, I encountered some issues with Apache Pulsar. I'm not sure if I'm faulty, or if there are few bugs in Pulsar,
 or if the Pulsar documentation is not clear enough... but I faced the following issues:
 
-- Message.getRedeliveryCount() returns always 0 even if the message was previously negatively acknowledged. It is 
+- `Message.getRedeliveryCount()` returns always 0 even if the message was previously negatively acknowledged. It is 
 important for me to know if this is the first time is message is delivered or not, because I want to increment a counter 
 only the first time (and of course I do not want to store the ids of previous messages in some database or remote cache 
 and to make a check for each incoming message; the remote call would kill the performance of the system).
 
-- It is difficult to tune the embedded Jackson (for JSON data). In my Maven dependencies, I replaced the pulsar-client 
-dependency (which embeds Jackson in a shadow package) by the pulsar-client-original dependency (which does not embed
-its own version of Jackson). But even with the pulsar-client-original dependency, I could not find a way to customize
+- It is difficult to tune the embedded Jackson (for JSON data). In my Maven dependencies, I replaced the `pulsar-client` 
+dependency (which embeds Jackson in a shadow package) by the `pulsar-client-original` dependency (which does not embed
+its own version of Jackson). But even with the `pulsar-client-original` dependency, I could not find a way to customize
 the Jackson ObjectMapper used by Pulsar.
 
-- By default, Pulsar does not activate the JSR310 compatibility and does not know how to serialize/deserialize Instant 
-objects (useful for timestamps). I had to annotate all my Instant attributes with @JsonSerialize and @JsonDeserialize 
+- By default, Pulsar does not activate the JSR310 compatibility and does not know how to serialize/deserialize `Instant` 
+objects (useful for timestamps). I had to annotate all my Instant attributes with `@JsonSerialize` and `@JsonDeserialize` 
 annotations and to provide my own Instant serializer/deserializer code. It is not very convenient.
 
-- To activate JSR310 support (for >= Java 8 dates), I had to look at the code inside Schema.JSON to know how to activate
-JSR310 support. Instead of Schema.JSON, I now use DefaultImplementation.newJSONSchema(SchemaDefinition.builder().withJSR310ConversionEnabled(true).withPojo(MySuperClass.class).build()).
-But DefaultImplementation is an internal class of Pulsar (in the internal package), and it is awkward to have to use
+- To activate JSR310 support (for >= Java 8 dates), I had to look at the code inside `Schema.JSON` to know how to activate
+JSR310 support. Instead of `Schema.JSON`, I now use `DefaultImplementation.newJSONSchema(SchemaDefinition.builder().withJSR310ConversionEnabled(true).withPojo(MySuperClass.class).build())`.
+But `DefaultImplementation` is an internal class of Pulsar (in the internal package), and it is awkward to have to use
 a private class of a library.
+
+- Even with JSR310 support activated (with the code above), I still could not make Pulsar serialize/deserialize `Instant` 
+objects correctly (the behaviour was exactly the same with or without the JSR310 support activation).
 
 - The number of listener threads on the message consumer side is set to 1 by default. With such setting, if a message 
 listener takes some time to process a message, all the next messages are waiting, even if those messages are on 
