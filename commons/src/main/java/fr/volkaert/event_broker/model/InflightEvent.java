@@ -53,11 +53,6 @@ public class InflightEvent {
     private String authClientSecret;
     private String authScope;   // may be useful if authMethod = "oauth2"
 
-    private Long timeToLiveInSecondsForWebhookConnectionError;      // If null or 0, use the defaultTimeToLiveInSecondsForWebhookConnectionError in BrokerConfig
-    private Long timeToLiveInSecondsForWebhookReadTimeoutError;     // If null or 0, use the defaultTimeToLiveInSecondsForWebhookReadTimeoutError in BrokerConfig
-    private Long timeToLiveInSecondsForWebhookServer5xxError;       // If null or 0, use the defaultTimeToLiveInSecondsForWebhookServer5xxError in BrokerConfig
-    private Long timeToLiveInSecondsForWebhookClient4xxError;       // If null or 0, use the defaultTimeToLiveInSecondsForWebhookClient4xxError in BrokerConfig
-
     public String toShortLog() {
         return String.format("{ id: %s, businessId: %s, eventTypeCode: %s, publicationCode: %s, subscriptionCode: %s }",
                 id, businessId, eventTypeCode, publicationCode, subscriptionCode);
@@ -91,10 +86,6 @@ public class InflightEvent {
         clone.setAuthClientId("*****"); // SENSITIVE DATA !
         clone.setAuthClientSecret("*****"); // SENSITIVE DATA !
         clone.setAuthScope("*****"); // SENSITIVE DATA !
-        clone.setTimeToLiveInSecondsForWebhookConnectionError(timeToLiveInSecondsForWebhookConnectionError);
-        clone.setTimeToLiveInSecondsForWebhookReadTimeoutError(timeToLiveInSecondsForWebhookReadTimeoutError);
-        clone.setTimeToLiveInSecondsForWebhookServer5xxError(timeToLiveInSecondsForWebhookServer5xxError);
-        clone.setTimeToLiveInSecondsForWebhookClient4xxError(timeToLiveInSecondsForWebhookClient4xxError);
         return clone;
     }
 }
