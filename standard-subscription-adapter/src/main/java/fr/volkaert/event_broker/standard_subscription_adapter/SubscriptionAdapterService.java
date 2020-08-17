@@ -212,7 +212,14 @@ public class SubscriptionAdapterService {
             httpHeaders.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
             httpHeaders.setAccept(List.of(MediaType.APPLICATION_JSON));
             httpHeaders.setCacheControl("no-cache");
-            httpHeaders.setBasicAuth(config.getOauth2ClientId(), config.getOauth2ClientSecret());
+
+            if (!StringUtils.isEmpty(config.getOauth2ClientId()) && !StringUtils.isEmpty(config.getOauth2ClientSecret())) {
+                httpHeaders.setBasicAuth(config.getOauth2ClientId(), config.getOauth2ClientSecret());
+            } else {
+                String msg = "Missing BasicAuth credentials to access the OAuth2 issuer";
+                LOGGER.error(msg);
+                throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg);
+            }
 
             String requestData = "grant_type=client_credentials&scope=" + authScope;
 
