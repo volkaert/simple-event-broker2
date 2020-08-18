@@ -179,9 +179,21 @@ cd catalog
 ```
 ### Run the Standard Subscription Adapter
 
-The Subscription Adapter may require to get OAuth2 Access Tokens from an AuthorizationServer if some webhooks are secured 
+The configuration of the `Subscription Adapter` depends on whether OAuth2 is used to secure your webhooks (or whether
+simple BasicAuth is used or no authentication).
+
+### If you webhooks are secured using OAuth2 ###
+
+The Subscription Adapter requires to get OAuth2 Access Tokens from an AuthorizationServer if some webhooks are secured 
 using OAuth2. In that case, the Subscription Adapter must be declared in the AuthorizationServer to get its clientId
-and clientSecret to authenticate itself.
+and clientSecret to authenticate itself. 
+
+For this project, I used a free developer account on Okta (https://developer.okta.com).
+To create a `simple-event-broker2` service/application in Okta, select the Applications/Add Application menu, then choose an
+application of type `Service`, then fill in the name `simple-event-broker2`. Once the application is created, copy/paste
+the clientId and clientSecret (they will be copied in the `set-credentials.sh` file below).
+To add a OAuth2 scope for your webhooks, select the API/Authorization Servers menu, then choose the `default` Authorization Server,
+then select the Scopes tab, then add scope `test_subscriber_oauth2.webhooks`.
 
 Create a file `set-credentials.sh` in the `standard-subscription-adapter` directory with the following lines:
 ```
@@ -191,12 +203,29 @@ export OAUTH2_CLIENT_SECRET=<PUT_HERE_YOUR_OWN_OAUTH2_CLIENT_SCERET>
 Of course, a file with such sensitive data is not committed in the source code repository so you have to create your own
 version locally.
 
-Once the `set-credentials.sh`file contains the right credentials, then run the Subscription Adapter:
+Update the `src/main/resources/application.properties` file to set the `broker.oauth2-token-endpoint` property with
+the URL of the default Authorization Server of your Okta account (for example: `https://dev-123456.okta.com/oauth2/default/v1/token`; 
+replace `123456` with your actual organization id in Okta).
+
+Once the `set-credentials.sh`file contains the right credentials and the `application.properties` has been updated, 
+then run the Subscription Adapter:
 ```
 cd standard-subscription-adapter
 source set-credentials.sh
 ../mvnw clean spring-boot:run
 ```
+
+### If your webhooks are not secured or secured using BasicAuth ###
+
+In that case, there is no need for the Subscription Adapter to get OAuth2 Access Tokens from an AuthorizationServer.
+
+So you can simply run the Subscription Adapter (without `set-credentials.sh`file):
+```
+cd standard-subscription-adapter
+../mvnw clean spring-boot:run
+```
+
+
 ### Run the Pulsar Subscription Manager
 ```
 cd pulsar-subscription-manager
