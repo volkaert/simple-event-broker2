@@ -197,9 +197,11 @@ using OAuth2. In that case, the Subscription Adapter must be declared in the Aut
 and clientSecret to authenticate itself. 
 
 For this project, I used a free developer account on Okta (https://developer.okta.com).
+
 To create a `simple-event-broker2` service/application in Okta, select the Applications/Add Application menu, then choose an
 application of type `Service`, then fill in the name `simple-event-broker2`. Once the application is created, copy/paste
 the clientId and clientSecret (they will be copied in the `set-credentials.sh` file below).
+
 To add a OAuth2 scope for your webhooks, select the API/Authorization Servers menu, then choose the `default` Authorization Server,
 then select the Scopes tab, then add scope `test_subscriber_oauth2.webhooks`.
 
@@ -365,10 +367,23 @@ bin/pulsar-admin topics delete --deleteSchema persistent://public/default/<topic
 
 ## Misc
 
-Online Bcrypt Hash Generator and Checker(Bcrypt Calculator): https://www.devglan.com/online-tools/bcrypt-hash-generator
+### BCrypt encryption for credentials
 
+Some credentials (in the `application.properties` files) are encrypted using BCrypt. To encrypt some password, you can
+use an online BCrypt Hash Generator and Checker, such as https://www.devglan.com/online-tools/bcrypt-hash-generator
+
+### Pulsar Auto Update Schema and Schema Compatibility Strategy
+ 
+In Event Driven Architectures, producers and consumers need some kind of mechanism for coordinating types at the topic 
+level to avoid various potential problems arise. For example, serialization and deserialization issues. 
+Pulsar uses the concept of Schema to address such type of issues.
+
+If you want to add/remove/change some attributes in the `InflightEvent` class, you should run the following commands to
+enable compatibility of various versions of the class/schema: 
+```
 bin/pulsar-admin namespaces set-is-allow-auto-update-schema --enable public/default
 bin/pulsar-admin namespaces set-schema-compatibility-strategy --compatibility ALWAYS_COMPATIBLE public/default
+```
 
 
 ## Notes about Apache Pulsar
