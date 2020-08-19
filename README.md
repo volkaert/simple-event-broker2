@@ -172,11 +172,19 @@ Start the modules in the order below.
 cd apache-pulsar-2.6.0
 bin/pulsar standalone
 ```
+
+### Compile and install the Commons module
+```
+cd commonns
+../mvnw clean install
+```
+
 ### Run the Catalog
 ```
 cd catalog
 ../mvnw clean spring-boot:run
 ```
+
 ### Run the Standard Subscription Adapter
 
 The configuration of the `Subscription Adapter` depends on whether OAuth2 is used to secure your webhooks (or whether
@@ -231,21 +239,25 @@ cd standard-subscription-adapter
 cd pulsar-subscription-manager
 ../mvnw clean spring-boot:run
 ```
+
 ### Run the Pulsar Publication Manager
 ```
 cd pulsar-publication-manager
 ../mvnw clean spring-boot:run
 ```
+
 ### Run the Standard Publication Adapter
 ```
 cd standard-publication-adapter
 ../mvnw clean spring-boot:run
 ```
+
 ### Run the Publication Gateway
 ```
 cd publication-gateway
 ../mvnw clean spring-boot:run
 ```
+
 ### Run the Test/fake Subscriber
 ```
 cd test-subscriber
