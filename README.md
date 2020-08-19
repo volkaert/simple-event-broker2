@@ -175,7 +175,7 @@ bin/pulsar standalone
 
 ### Compile and install the Commons module
 ```
-cd commonns
+cd commons
 ../mvnw clean install
 ```
 
