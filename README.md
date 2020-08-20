@@ -152,6 +152,24 @@ NOT with the HTTP status code returned by the `Subscription Adapter`)
 `broker.read-timeout-in-seconds-for-subscription-adapter` property to set an appropriate timeout)
 - the `Subscription Adapter` returned a `4xx client error` or a `5xx server error` code
 - an unexpected error occurred
+
+
+## Liveness and readiness probes
+
+Liveness and readiness probes have been introduced in Spring Boot 2.3.
+See https://spring.io/blog/2020/03/25/liveness-and-readiness-probes-with-spring-boot
+
+Pay attention to the difference between readiness et liveness. In case of a liveness failure, Kubernetes will kill the 
+pod and restart another one. In case of a readiness failure, Kubernetes will stop to route the traffic to the pod until
+the readiness state succeed. Liveness state should be used only for non-recoverable errors.
+
+In this project, liveness and readiness probes are used as follows:
+- The Catalog, Publication Manager and Publication Adapter modules expose their probes at `/actuator/health/liveness` and 
+`/actuator/health/readiness`
+- Those endpoints return `200 OK` if the state is healthy and `503 Service Unavailable` if the state is unhealthy
+- The Publication Adapter is ready if the Publication Manager is ready
+- The Publication Manager is ready if the Catalog is ready
+- The Catalog is ready if its database is ready (if it can load event types from the db without error)
  
 
 ## Install and run Apache Pulsar
