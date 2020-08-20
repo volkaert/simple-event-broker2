@@ -159,7 +159,7 @@ NOT with the HTTP status code returned by the `Subscription Adapter`)
 Liveness and readiness probes have been introduced in Spring Boot 2.3.
 See https://spring.io/blog/2020/03/25/liveness-and-readiness-probes-with-spring-boot
 
-Pay attention to the difference between readiness et liveness. In case of a liveness failure, Kubernetes will kill the 
+Pay attention to the difference between liveness and readiness. In case of a liveness failure, Kubernetes will kill the 
 pod and restart another one. In case of a readiness failure, Kubernetes will stop to route the traffic to the pod until
 the readiness state succeed. Liveness state should be used only for non-recoverable errors.
 
