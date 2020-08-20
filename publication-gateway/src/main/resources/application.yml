@@ -5,6 +5,9 @@ spring:
     name: simple-event-broker2-publication-gateway
   cloud:
     gateway:
+      httpclient:
+        connect-timeout: 2000
+        response-timeout: 10s
       routes:
         - id: standard-publication-adapter
           uri: http://localhost:8082

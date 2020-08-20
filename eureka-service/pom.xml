@@ -9,32 +9,19 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>pulsar-subscription-manager</artifactId>
-
-    <properties>
-        <broker.commons.version>1.0-SNAPSHOT</broker.commons.version>
-        <pulsar.version>2.6.0</pulsar.version>
-    </properties>
+    <artifactId>eureka-service</artifactId>
 
     <dependencies>
         <dependency>
-            <groupId>fr.volkaert.simple-event-broker2</groupId>
-            <artifactId>commons</artifactId>
-            <version>${broker.commons.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.pulsar</groupId>
-            <artifactId>pulsar-client-original</artifactId>
-            <version>${pulsar.version}</version>
-        </dependency>
-
-        <!--
-        <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+            <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
         </dependency>
-        -->
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 
     <build>

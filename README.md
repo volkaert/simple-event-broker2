@@ -5,6 +5,7 @@ The v2 version uses SpringBoot (and not Quarkus) and Apache Pulsar (and not a cu
 
 ## The various modules/components
 - Apache Pulsar. In dev mode, it uses port 8080 and 6650.
+- Eureka Service Discovery. It uses port 8761 (default port for Eureka service).
 - Publication Gateway. In dev mode, it uses port 8081.
 - Standard Publication Adapter. In dev mode, it uses port 8082.
 - Pulsar Publication Manager. In dev mode, it uses port 8083.
@@ -189,6 +190,12 @@ Start the modules in the order below.
 ```
 cd apache-pulsar-2.6.0
 bin/pulsar standalone
+```
+
+### Run the Eureka Service Discovery
+```
+cd eureka-service
+../mvnw clean spring-boot:run
 ```
 
 ### Compile and install the Commons module
