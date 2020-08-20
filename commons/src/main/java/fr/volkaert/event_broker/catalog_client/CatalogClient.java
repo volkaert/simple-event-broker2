@@ -52,14 +52,14 @@ public class CatalogClient {
 
     @Cacheable(value = "event-types")
     public List<EventType> getEventTypes() {
-        ResponseEntity<List<EventType>> responseEntity = restTemplate.exchange(catalogUrl + "/event-types", HttpMethod.GET, null,
+        ResponseEntity<List<EventType>> responseEntity = restTemplate.exchange(catalogUrl + "/catalog/event-types", HttpMethod.GET, null,
             new ParameterizedTypeReference<List<EventType>>() {});
         return responseEntity.getBody();
     }
 
     @Cacheable(value = "event-types")
     public EventType getEventType(String code) {
-        ResponseEntity<EventType> responseEntity = restTemplate.getForEntity(catalogUrl + "/event-types/" + code, EventType.class);
+        ResponseEntity<EventType> responseEntity = restTemplate.getForEntity(catalogUrl + "/catalog/event-types/" + code, EventType.class);
         return responseEntity.getBody();
     }
     @Cacheable(value = "event-types")
@@ -75,14 +75,14 @@ public class CatalogClient {
 
     @Cacheable(value = "publications")
     public List<Publication> getPublications() {
-        ResponseEntity<List<Publication>> responseEntity = restTemplate.exchange(catalogUrl + "/publications", HttpMethod.GET, null,
+        ResponseEntity<List<Publication>> responseEntity = restTemplate.exchange(catalogUrl + "/catalog/publications", HttpMethod.GET, null,
                 new ParameterizedTypeReference<List<Publication>>() {});
         return responseEntity.getBody();
     }
 
     @Cacheable(value = "publications")
     public Publication getPublication(String code) {
-        ResponseEntity<Publication> responseEntity = restTemplate.getForEntity(catalogUrl + "/publications/" + code, Publication.class);
+        ResponseEntity<Publication> responseEntity = restTemplate.getForEntity(catalogUrl + "/catalog/publications/" + code, Publication.class);
         return responseEntity.getBody();
     }
 
@@ -99,14 +99,14 @@ public class CatalogClient {
 
     @Cacheable(value = "subscriptions")
     public List<Subscription> getSubscriptions() {
-        ResponseEntity<List<Subscription>> responseEntity = restTemplate.exchange(catalogUrl + "/subscriptions", HttpMethod.GET, null,
+        ResponseEntity<List<Subscription>> responseEntity = restTemplate.exchange(catalogUrl + "/catalog/subscriptions", HttpMethod.GET, null,
                 new ParameterizedTypeReference<List<Subscription>>() {});
         return responseEntity.getBody();
     }
 
     @Cacheable(value = "subscriptions")
     public Subscription getSubscription(String code) {
-        ResponseEntity<Subscription> responseEntity = restTemplate.getForEntity(catalogUrl + "/subscriptions/" + code, Subscription.class);
+        ResponseEntity<Subscription> responseEntity = restTemplate.getForEntity(catalogUrl + "/catalog/subscriptions/" + code, Subscription.class);
         return responseEntity.getBody();
     }
 

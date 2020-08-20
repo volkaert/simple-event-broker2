@@ -27,6 +27,7 @@ public class MySpringSecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http.csrf().disable().authorizeRequests()
+                .antMatchers("/actuator/**").permitAll()
                 .anyRequest().authenticated()
                 .and().httpBasic()
                 .authenticationEntryPoint(authEntryPoint);
@@ -34,7 +35,7 @@ public class MySpringSecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Autowired
     public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
-        auth.inMemoryAuthentication().withUser(authClientId).password(authClientSecret).roles("USER");
+        auth.inMemoryAuthentication().withUser(authClientId).password(authClientSecret).roles("CLIENT");
     }
 
     @Bean

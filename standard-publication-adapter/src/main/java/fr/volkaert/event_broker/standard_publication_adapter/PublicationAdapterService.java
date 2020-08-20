@@ -23,7 +23,7 @@ public class PublicationAdapterService {
 
     @Autowired
     @Qualifier("RestTemplateForPublicationManager")
-    RestTemplate restTemplate;
+    RestTemplate restTemplateForPublicationManager;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PublicationAdapterService.class);
 
@@ -51,7 +51,7 @@ public class PublicationAdapterService {
 
         try {
             LOGGER.debug("Calling the Publication Manager at {}. Event is {}.", publicationManagerUrl, inflightEvent);
-            ResponseEntity<InflightEvent> response = restTemplate.exchange(publicationManagerUrl, HttpMethod.POST, request, InflightEvent.class);
+            ResponseEntity<InflightEvent> response = restTemplateForPublicationManager.exchange(publicationManagerUrl, HttpMethod.POST, request, InflightEvent.class);
             LOGGER.debug("The Publication Manager returned the http status code {}. Event is {}.",
                     response.getStatusCode(), inflightEvent.toShortLog());
 

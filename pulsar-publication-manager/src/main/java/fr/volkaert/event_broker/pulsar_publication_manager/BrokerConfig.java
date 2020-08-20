@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 @Data
 public class BrokerConfig {
 
+    private String catalogUrl;
     private String pulsarServiceUrl;
 
     private String componentTypeName;   // Useful for metrics (to group them by component type)
