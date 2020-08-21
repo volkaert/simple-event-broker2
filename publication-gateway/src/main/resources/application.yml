@@ -10,7 +10,7 @@ spring:
         response-timeout: 10s
       routes:
         - id: standard-publication-adapter
-          uri: http://localhost:8082
+          uri: lb://StandardPublicationAdapter
           predicates:
           - Path=/events
           filters:
