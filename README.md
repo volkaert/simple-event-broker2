@@ -444,3 +444,6 @@ different topics (and thus are not related, so they could be delivered concurren
 for a given topic but not among all the topics). We have powerful multi-core computers, but with this default setting 
 all the messages are processed sequentially which is not efficient. In this project, I set the number of listener threads
 to 25 and now slow consumers on topic A do not block fast consumers on topic B. Why such a default value of 1 ?
+
+- Maven dependencies `pulsar-client(-original)` (v 2.6.0) and `spring-cloud-starter-netflix-eureka-client` (Hoxton.SR7) are
+incompatible. If both are present, the application failed at startup with the exception `Cannot create Jersey client`.

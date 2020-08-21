@@ -12,7 +12,7 @@
     <artifactId>publication-gateway</artifactId>
 
     <properties>
-        <spring-cloud.version>Hoxton.SR4</spring-cloud.version>
+        <spring-cloud.version>Hoxton.SR5</spring-cloud.version>
     </properties>
 
     <dependencies>
@@ -24,27 +24,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
 
         <!-- see https://stackoverflow.com/questions/62042547/failed-to-instantiate-discoverylocatorproperties-in-spring-cloud-gateway-with-sp -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.junit.vintage</groupId>
-                    <artifactId>junit-vintage-engine</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
     </dependencies>
 
@@ -66,8 +50,8 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <!-- to be able to start the app directy using myapp.jar, instead of java -jar myapp.jar -->
-                    <!-- useful to start the app using systemd (to manage the full lifecyle of the app: start, stop, restart... -->
+                    <!-- to be able to start the app directly using myapp.jar, instead of java -jar myapp.jar -->
+                    <!-- useful to start the app using systemd (to manage the full lifecycle of the app: start, stop, restart... -->
                     <!-- see https://docs.spring.io/spring-boot/docs/current/reference/html/deployment.html#deployment-install -->
                     <executable>true</executable>
                 </configuration>
