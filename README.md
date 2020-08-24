@@ -7,8 +7,8 @@ The v2 version uses SpringBoot (and not Quarkus) and Apache Pulsar (and not a cu
 - Apache Pulsar. In dev mode, it uses port 8080 and 6650.
 - Eureka Service Discovery. It uses port 8761 (default port for Eureka service).
 - Publication Gateway. In dev mode, it uses port 8081.
-- Standard Publication Adapter. In dev mode, it uses port 8082.
-- Pulsar Publication Manager. In dev mode, it uses port 8083.
+- Standard Publication Adapter. Port dynamically defined by Eureka. Name in Eureka: StandardPublicationAdapter.
+  Pulsar Publication Manager. Port dynamically defined by Eureka. Name in Eureka: PulsarPublicationManager.
 - Pulsar Subscription Manager. In dev mode, it uses port 8084.
 - Subscription Gateway (optional). In dev mode, it uses port 8085.
 - Standard Subscription Adapter. In dev mode, it uses port 8086.
