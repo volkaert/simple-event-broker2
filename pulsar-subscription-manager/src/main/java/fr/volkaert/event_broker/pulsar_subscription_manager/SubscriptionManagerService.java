@@ -71,7 +71,10 @@ public class SubscriptionManagerService {
                 LOGGER.info("Creating Pulsar consumers...");
                 for (Subscription subscription : subscriptions) {
                     try {
-                        getPulsarConsumer(subscription.getEventTypeCode(), subscription.getCode());
+                        String eventTypeCode = subscription.getEventTypeCode();
+                        if (shouldTheEventBeManagedByThisInstanceOfSubscriptionManager(eventTypeCode)) {
+                            getPulsarConsumer(eventTypeCode, subscription.getCode());
+                        }
                     } catch (Exception ex) {  // if there is an issue with a subscription, continue with the others...
                         // No need to log the error since it has already been logged in getPulsarConsumer()
                     }
@@ -410,5 +413,15 @@ public class SubscriptionManagerService {
             timeToLiveInSecondsToUse = timeToLiveForWebhookErrorInSubscription;
         }
         return now.isAfter(event.getCreationDate().plusSeconds(timeToLiveInSecondsToUse));
+    }
+
+    private boolean shouldTheEventBeManagedByThisInstanceOfSubscriptionManager(String eventTypeCode) {
+        int sumOfAsciiCodesOfCharsOfEventTypeCode = 0;
+        int eventTypeCodeLength = eventTypeCode.length();
+        for (int i = 0; i < eventTypeCodeLength; i++) {
+            sumOfAsciiCodesOfCharsOfEventTypeCode += eventTypeCode.charAt(i);
+        }
+        int indexOfTheInstanceOfTheInstanceOfSubscriptionManagerThatShouldManageThisEvent = sumOfAsciiCodesOfCharsOfEventTypeCode % config.getClusterSize();
+        return indexOfTheInstanceOfTheInstanceOfSubscriptionManagerThatShouldManageThisEvent == config.getClusterIndex();
     }
 }

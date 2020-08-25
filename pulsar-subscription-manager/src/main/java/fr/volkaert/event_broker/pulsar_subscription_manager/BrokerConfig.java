@@ -27,4 +27,13 @@ public class BrokerConfig {
     private long defaultTimeToLiveInSecondsForWebhookServer5xxError;
     private long defaultTimeToLiveInSecondsForWebhookClient4xxError;
     private long defaultTimeToLiveInSecondsForWebhookAuth401Or403Error;
+
+    // Cluster size is the number of PulsarSubscriptionManager instances and Cluster index is the index of this
+    // PulsarSubscriptionManager instance within the cluster.
+    // Cluster index must  be ***UNIQUE*** within the cluster and must follow the sequence 0, 1... < Cluster size.
+    // The PulsarSubscriptionManager instance in charge of the management of an event is the instance that meets the
+    // criteria 'broker.cluster-index == (sum-of-the-ascii-codes-of-the-chars-of-event-type-code % broker.cluster-size)'.
+    // For a given event type, only one instance of PulsarSubscriptionManager will manage the events.
+    private int clusterSize;
+    private int clusterIndex;
 }

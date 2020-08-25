@@ -9,9 +9,9 @@ The v2 version uses SpringBoot (and not Quarkus) and Apache Pulsar (and not a cu
 - Publication Gateway. In dev mode, it uses port 8081.
 - Standard Publication Adapter. Port dynamically defined by Eureka. Name in Eureka: StandardPublicationAdapter.
   Pulsar Publication Manager. Port dynamically defined by Eureka. Name in Eureka: PulsarPublicationManager.
-- Pulsar Subscription Manager. In dev mode, it uses port 8084.
+- Pulsar Subscription Manager. Port dynamically defined by Eureka. Name in Eureka: PulsarSubscriptionManager.
 - Subscription Gateway (optional). In dev mode, it uses port 8085.
-- Standard Subscription Adapter. In dev mode, it uses port 8086.
+- Standard Subscription Adapter. Port dynamically defined by Eureka. Name in Eureka: StandardPublicationAdapter.
 - Catalog. In dev mode, it uses port 8089.
 - Test/Fake Subscriber. In dev mode, it uses port 8099.
 
@@ -197,6 +197,7 @@ bin/pulsar standalone
 cd eureka-service
 ../mvnw clean spring-boot:run
 ```
+>You should start only one instance of the Eureka Service Discovery
 
 ### Compile and install the Commons module
 ```
@@ -209,11 +210,14 @@ cd commons
 cd catalog
 ../mvnw clean spring-boot:run
 ```
+>You should start only one instance of the Catalog (because this simple project uses an in-memory database H2)
 
 ### Run the Standard Subscription Adapter
 
 The configuration of the `Subscription Adapter` depends on whether OAuth2 is used to secure your webhooks (or whether
 simple BasicAuth is used or no authentication).
+
+>You can start multiple instances of the Standard Subscription Adapter
 
 ### If you webhooks are secured using OAuth2 ###
 
@@ -260,11 +264,38 @@ cd standard-subscription-adapter
 ../mvnw clean spring-boot:run
 ```
 
-
 ### Run the Pulsar Subscription Manager
+
+>You can start multiple instances of the Pulsar Subscription Manager but if you start multiple instances, you must pay
+>attention to provide the right configuration on the start command line (to override the default properties 
+>`broker.cluster-size` and `broker.cluster-index`).
+>Cluster size is the number of PulsarSubscriptionManager instances and Cluster index is the index of this
+>PulsarSubscriptionManager instance within the cluster.
+>Cluster index must  be ***UNIQUE*** within the cluster and must follow the sequence 0, 1... < Cluster size.
+>The PulsarSubscriptionManager instance in charge of the management of an event is the instance that meets the
+>criteria `broker.cluster-index == (sum-of-the-ascii-codes-of-the-chars-of-event-type-code % broker.cluster-size)`.
+>For a given event type, only one instance of PulsarSubscriptionManager will manage the events.
+
+>**Warning**: This special configuration when multiple instances of Pulsar Subscription Manager are used is mandatory to 
+>guarantee the delivery order of the events (otherwise, 2 instances could process at different pace the events with a same 
+>EventTypeCode pace, which would mess the delivery order).
+
+
+#### With one instance only of Pulsar Subscription Manager
 ```
 cd pulsar-subscription-manager
 ../mvnw clean spring-boot:run
+```
+#### With 2 instances of Pulsar Subscription Manager
+Start the instance #1 with:
+```
+cd pulsar-subscription-manager
+../mvnw clean spring-boot:run -Dspring-boot.run.arguments="--broker.cluster-size=2 , --broker.cluster-index=0"
+```
+Start the instance #2 with:
+```
+cd pulsar-subscription-manager
+../mvnw clean spring-boot:run -Dspring-boot.run.arguments="--broker.cluster-size=2 , --broker.cluster-index=1"
 ```
 
 ### Run the Pulsar Publication Manager
@@ -272,24 +303,29 @@ cd pulsar-subscription-manager
 cd pulsar-publication-manager
 ../mvnw clean spring-boot:run
 ```
+>You can start multiple instances of the Pulsar Publication Manager
 
 ### Run the Standard Publication Adapter
 ```
 cd standard-publication-adapter
 ../mvnw clean spring-boot:run
 ```
+>You can start multiple instances of the Standard Publication Adapter
 
 ### Run the Publication Gateway
 ```
 cd publication-gateway
 ../mvnw clean spring-boot:run
 ```
+>You should start only one instance of the Publication Gateway
+
 
 ### Run the Test/fake Subscriber
 ```
 cd test-subscriber
 ../mvnw clean spring-boot:run
 ```
+>You should start only one instance of the Test/Fake Subscriber
 
 
 ## Test
