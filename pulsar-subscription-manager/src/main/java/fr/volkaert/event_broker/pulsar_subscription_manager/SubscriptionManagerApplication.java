@@ -13,7 +13,7 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.context.event.ContextStartedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
@@ -38,9 +38,7 @@ public class SubscriptionManagerApplication {
     }
 
     @EventListener
-    public void handleContextRefreshEvent(ContextRefreshedEvent ctxRefreshedEvt) {
-        subscriptionManagerService.start();
-    }
+    public void handleContextRefreshEvent(ContextStartedEvent ctxStartedEvt) {  subscriptionManagerService.start(); }
 
     @Bean
     PulsarClient createPulsarClient() throws PulsarClientException {
