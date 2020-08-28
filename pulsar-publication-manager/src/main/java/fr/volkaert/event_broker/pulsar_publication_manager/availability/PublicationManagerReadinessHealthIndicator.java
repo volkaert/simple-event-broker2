@@ -46,8 +46,8 @@ public class PublicationManagerReadinessHealthIndicator implements CompositeHeal
     class CatalogReadinessHealthIndicator implements HealthIndicator {
         @Override
         public Health health() {
+            LOGGER.debug("Checking Catalog readiness state");
             String readinessUrlForCatalog = config.getCatalogUrl() + "/actuator/health/readiness";
-            System.out.println("******************************" + readinessUrlForCatalog);
             try {
                 ResponseEntity<Void> response = restTemplateForCatalogClient.getForEntity(readinessUrlForCatalog, Void.class);
                 if (response.getStatusCode().is2xxSuccessful())
