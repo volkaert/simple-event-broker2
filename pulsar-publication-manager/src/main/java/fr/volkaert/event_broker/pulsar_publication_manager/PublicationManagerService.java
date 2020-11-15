@@ -2,10 +2,10 @@ package fr.volkaert.event_broker.pulsar_publication_manager;
 
 import fr.volkaert.event_broker.catalog_client.CatalogClient;
 import fr.volkaert.event_broker.error.BrokerException;
-import fr.volkaert.event_broker.metrics.MetricsService;
 import fr.volkaert.event_broker.model.EventType;
 import fr.volkaert.event_broker.model.InflightEvent;
 import fr.volkaert.event_broker.model.Publication;
+import fr.volkaert.event_broker.telemetry.TelemetryService;
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
@@ -38,12 +38,12 @@ public class PublicationManagerService {
     Map<String, Producer> eventTypeCodeToPulsarProducerMap = new HashMap<>();
 
     @Autowired
-    MetricsService metricsService;
+    TelemetryService telemetryService;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PublicationManagerService.class);
 
     public InflightEvent publish(InflightEvent inflightEvent) throws PulsarClientException {
-        LOGGER.debug("Event received. Event is {}.", inflightEvent);
+        telemetryService.eventPublicationSubmitted(inflightEvent);
 
         Instant publicationStart = Instant.now();
 
@@ -55,23 +55,18 @@ public class PublicationManagerService {
 
         String publicationCode = inflightEvent.getPublicationCode();
         if (publicationCode == null || publicationCode.trim().equals("")) {
-            metricsService.registerPublicationWithMissingPublicationCode();
-            String msg = String.format("Publication code is missing");
-            LOGGER.error(msg);
+            String msg = telemetryService.eventPublicationSubmittedWithMissingPublicationCode();
             throw new BrokerException(HttpStatus.BAD_REQUEST, msg);
         }
 
         Publication publication = catalog.getPublication(publicationCode);
         if (publication == null) {
-            metricsService.registerPublicationWithInvalidPublicationCode(publicationCode);
-            String msg = String.format("Invalid publication code '%s'", publicationCode);
-            LOGGER.error(msg);
+            String msg = telemetryService.eventPublicationSubmittedWithInvalidPublicationCode(publicationCode);
             throw new BrokerException(HttpStatus.BAD_REQUEST, msg);
         }
 
         if (! publication.isActive()) {
-            String msg = String.format("Inactive publication '%s'", publicationCode);
-            LOGGER.warn(msg);
+            String msg = telemetryService.eventPublicationSubmittedOnInactivePublication(publicationCode);
             throw new BrokerException(HttpStatus.BAD_REQUEST, msg);
         }
 
@@ -79,23 +74,23 @@ public class PublicationManagerService {
         EventType eventType = catalog.getEventTypeOrThrowException(eventTypeCode);
         inflightEvent.setEventTypeCode(eventTypeCode);
 
-        boolean beginOfPublicationRegistered = false;
+        telemetryService.beginOfPublication(publicationCode, eventTypeCode);
         try {
-            metricsService.registerBeginOfPublication(publicationCode, eventTypeCode);
-            beginOfPublicationRegistered = true;
+            telemetryService.eventPublicationAttempted(inflightEvent);
 
             Producer<InflightEvent> producer = getPulsarProducer(eventTypeCode);
 
-            LOGGER.debug("Sending event to Pulsar. Events is {}.", inflightEvent);
             producer.send(inflightEvent);
-            LOGGER.debug("Event sent successfully to Pulsar. Event is {}.", inflightEvent.toShortLog());
 
+            telemetryService.eventPublicationSucceeded(inflightEvent);
+
+        } catch (Exception ex) {
+            telemetryService.eventPublicationFailed(inflightEvent);
+
+        } finally {
+            telemetryService.endOfPublication(publicationCode, eventTypeCode, publicationStart);
             LOGGER.debug("Returning the event {}", inflightEvent);
             return inflightEvent;
-        } finally {
-            if (beginOfPublicationRegistered) {
-                metricsService.registerEndOfPublication(publicationCode, eventTypeCode, publicationStart);
-            }
         }
     }
 

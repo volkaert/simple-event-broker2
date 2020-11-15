@@ -2,10 +2,10 @@ package fr.volkaert.event_broker.pulsar_subscription_manager;
 
 import fr.volkaert.event_broker.catalog_client.CatalogClient;
 import fr.volkaert.event_broker.error.BrokerException;
-import fr.volkaert.event_broker.metrics.MetricsService;
 import fr.volkaert.event_broker.model.EventType;
 import fr.volkaert.event_broker.model.InflightEvent;
 import fr.volkaert.event_broker.model.Subscription;
+import fr.volkaert.event_broker.telemetry.TelemetryService;
 import org.apache.pulsar.client.api.*;
 import org.apache.pulsar.client.api.schema.SchemaDefinition;
 import org.apache.pulsar.client.internal.DefaultImplementation;
@@ -50,7 +50,7 @@ public class SubscriptionManagerService {
     Map<String, Producer> eventTypeCodeToPulsarProducerForDLQMap = new HashMap<>();
 
     @Autowired
-    MetricsService metricsService;
+    TelemetryService telemetryService;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionManagerService.class);
 
@@ -198,7 +198,7 @@ public class SubscriptionManagerService {
                 LOGGER.warn("Negative ack (due to exception while calling the Subscription Adapter) for message {}. Event is {}.",
                         message.getMessageId(), inflightEvent.toShortLog());
                 consumer.negativeAcknowledge(message);
-                metricsService.registerFailedDeliveryAttempt(
+                telemetryService.registerFailedDeliveryAttempt(
                         inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
                 return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
             }
@@ -258,7 +258,7 @@ public class SubscriptionManagerService {
                     consumer.negativeAcknowledge(message);
                 }
 
-                metricsService.registerFailedDeliveryAttempt(
+                telemetryService.registerFailedDeliveryAttempt(
                         inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
                 return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
             }
@@ -270,7 +270,7 @@ public class SubscriptionManagerService {
                 LOGGER.warn("Negative ack (due to unsuccessful http status {} returned by the webhook) for message {}. Event is {}.",
                         inflightEvent.getWebhookHttpStatus(), message.getMessageId(), inflightEvent.toShortLog());
                 consumer.negativeAcknowledge(message);
-                metricsService.registerFailedDeliveryAttempt(
+                telemetryService.registerFailedDeliveryAttempt(
                         inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
                 return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
             }
@@ -278,7 +278,7 @@ public class SubscriptionManagerService {
             // If we reached this line, everything seems fine, so we can ack the message
             LOGGER.debug("Ack for message {}. Event is {}.", message.getMessageId(), inflightEvent.toShortLog());
             consumer.acknowledge(message);
-            metricsService.registerSuccessfulDelivery(
+            telemetryService.registerSuccessfulDelivery(
                     inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
 
         } catch (Exception ex) {
@@ -288,7 +288,7 @@ public class SubscriptionManagerService {
                     message.getMessageId() : "null"), (inflightEvent != null ? inflightEvent.toShortLog() : "null"));
             consumer.negativeAcknowledge(message);
             if (inflightEvent != null) {
-                metricsService.registerFailedDeliveryAttempt(
+                telemetryService.registerFailedDeliveryAttempt(
                         inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
             }
         }

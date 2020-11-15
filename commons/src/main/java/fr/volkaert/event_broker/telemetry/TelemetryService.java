@@ -1,5 +1,6 @@
-package fr.volkaert.event_broker.metrics;
+package fr.volkaert.event_broker.telemetry;
 
+import fr.volkaert.event_broker.model.InflightEvent;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
@@ -17,36 +18,82 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
-public class MetricsService {
+public class TelemetryService {
 
     @Autowired
     MeterRegistry meterRegistry;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MetricsService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TelemetryService.class);
 
     private final Map<String, AtomicLong> pendingPublicationGauges = new ConcurrentHashMap<>();
     //private final Map<String, AtomicLong> pendingDeliveriesGauges = new ConcurrentHashMap<>();
+;
 
-    public synchronized void registerPublicationWithMissingPublicationCode() {
+    public synchronized String eventPublicationSubmitted(InflightEvent inflightEvent) {
+        String msg = "";
+        try {
+            msg = String.format("Event publication submitted. Event is %s.", inflightEvent);
+            LOGGER.debug(msg);
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventPublicationSubmitted", ex);
+        }
+        return msg;
+    }
+
+    public synchronized String eventPublicationSubmittedWithMissingPublicationCode() {
+        String msg = "";
+        try {
+            msg = String.format("Publication code is missing");
+            LOGGER.error(msg);
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventPublicationSubmittedWithMissingPublicationCode", ex);
+        }
         try {
             Counter counter = meterRegistry.counter("publications_with_missing_publication_code_total");
             counter.increment();
         } catch (Exception ex) {
-            LOGGER.error("Error while registering metric", ex);
+            LOGGER.error("Error while recording metrics for eventPublicationSubmittedWithMissingPublicationCode", ex);
         }
+        return msg;
     }
 
-    public synchronized void registerPublicationWithInvalidPublicationCode(String publicationCode) {
+    public synchronized String eventPublicationSubmittedWithInvalidPublicationCode(String publicationCode) {
+        String msg = "";
+        try {
+            msg = String.format("Invalid publication code '%s'", publicationCode);
+            LOGGER.error(msg);
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventPublicationSubmittedWithInvalidPublicationCode", ex);
+        }
         try {
             // do NOT use publicationCode as tag because in vase of an unknown publicationCode, its potential values are unbounded !
             Counter counter = meterRegistry.counter("publications_with_invalid_publication_code_total");
             counter.increment();
         } catch (Exception ex) {
-            LOGGER.error("Error while registering metric", ex);
+            LOGGER.error("Error while recording metrics for eventPublicationSubmittedWithInvalidPublicationCode", ex);
         }
+        return msg;
     }
 
-    public synchronized Instant registerBeginOfPublication(String publicationCode, String eventTypeCode) {
+    public synchronized String eventPublicationSubmittedOnInactivePublication(String publicationCode) {
+        String msg = "";
+        try {
+            msg = String.format("Inactive publication '%s'", publicationCode);
+            LOGGER.warn(msg); // WARNING and not ERROR !!
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventPublicationSubmittedOnInactivePublication", ex);
+        }
+        try {
+            // do NOT use publicationCode as tag because in vase of an unknown publicationCode, its potential values are unbounded !
+            Counter counter = meterRegistry.counter("publications_on_inactive_publication_total");
+            counter.increment();
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording metrics for eventPublicationSubmittedOnInactivePublication", ex);
+        }
+        return msg;
+    }
+
+    public synchronized Instant beginOfPublication(String publicationCode, String eventTypeCode) {
         try {
             Counter publicationsCounter = meterRegistry.counter("publications_total",
                     Tags.of("publication_code", publicationCode, "event_type_code", eventTypeCode));
@@ -67,7 +114,7 @@ public class MetricsService {
         }
     }
 
-    public synchronized void registerEndOfPublication(String publicationCode, String eventTypeCode, Instant publicationStart) {
+    public synchronized void endOfPublication(String publicationCode, String eventTypeCode, Instant publicationStart) {
         try {
             AtomicLong pendingPublications = pendingPublicationGauges.computeIfAbsent(eventTypeCode + "/" + publicationCode, x -> {
                 return meterRegistry.gauge("pending_publications",
@@ -84,6 +131,40 @@ public class MetricsService {
             LOGGER.error("Error while registering metric", ex);
         }
     }
+
+    public synchronized String eventPublicationAttempted(InflightEvent inflightEvent) {
+        String msg = "";
+        try {
+            msg = String.format("Event publication attempted. Event is %s.", inflightEvent.toShortLog());
+            LOGGER.debug(msg);
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventPublicationAttempted", ex);
+        }
+        return msg;
+    }
+
+    public synchronized String eventPublicationSucceeded(InflightEvent inflightEvent) {
+        String msg = "";
+        try {
+            msg = String.format("Event publication succeeded. Event is %s.", inflightEvent.toShortLog());
+            LOGGER.debug(msg);
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventPublicationSucceeded", ex);
+        }
+        return msg;
+    }
+
+    public synchronized String eventPublicationFailed(InflightEvent inflightEvent) {
+        String msg = "";
+        try {
+            msg = String.format("Event publication failed. Event is %s.", inflightEvent.toShortLog());
+            LOGGER.debug(msg);
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventPublicationFailed", ex);
+        }
+        return msg;
+    }
+
 
     /*
     public synchronized Instant registerBeginOfDelivery(String subscriptionCode, String eventTypeCode, String publicationCode) {

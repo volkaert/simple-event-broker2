@@ -1,4 +1,4 @@
-package fr.volkaert.event_broker.metrics;
+package fr.volkaert.event_broker.telemetry;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class MetricsConfig {
+public class TelemetryConfig {
 
     @Value("${broker.component-type-name}")
     String componentTypeName;
