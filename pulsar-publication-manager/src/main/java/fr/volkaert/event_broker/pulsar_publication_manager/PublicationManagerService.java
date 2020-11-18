@@ -43,9 +43,9 @@ public class PublicationManagerService {
     private static final Logger LOGGER = LoggerFactory.getLogger(PublicationManagerService.class);
 
     public InflightEvent publish(InflightEvent inflightEvent) throws PulsarClientException {
-        telemetryService.eventPublicationSubmitted(inflightEvent);
-
         Instant publicationStart = Instant.now();
+
+        telemetryService.eventPublicationRequested(inflightEvent);
 
         setTimeToLiveInSecondsIfMissingOrInvalid(inflightEvent);
 
@@ -53,45 +53,54 @@ public class PublicationManagerService {
         inflightEvent.setCreationDate(publicationStart);
         inflightEvent.setExpirationDate(publicationStart.plusSeconds(inflightEvent.getTimeToLiveInSeconds()));
 
+        boolean shouldContinue = checkConditionsForEventPublicationAreMetOrReject(inflightEvent);
+        if (! shouldContinue) {
+            return inflightEvent; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
+        }
+
+        telemetryService.eventPublicationAttempted(inflightEvent);
+        try {
+            String eventTypeCode = inflightEvent.getEventTypeCode();    // filled in checkConditionsForEventPublicationAreMetOrReject
+            Producer<InflightEvent> producer = getPulsarProducer(eventTypeCode);
+            producer.send(inflightEvent);
+            telemetryService.eventPublicationSucceeded(inflightEvent, publicationStart);
+        } catch (Exception ex) {
+            String msg = telemetryService.eventPublicationFailed(inflightEvent, ex, publicationStart);
+            throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg, ex);
+        }
+
+        LOGGER.debug("Returning the event {}", inflightEvent);
+        return inflightEvent;
+    }
+
+    private boolean checkConditionsForEventPublicationAreMetOrReject(InflightEvent inflightEvent) {
         String publicationCode = inflightEvent.getPublicationCode();
         if (publicationCode == null || publicationCode.trim().equals("")) {
-            String msg = telemetryService.eventPublicationSubmittedWithMissingPublicationCode();
+            String msg = telemetryService.eventPublicationRejectedDueToMissingPublicationCode(inflightEvent);
             throw new BrokerException(HttpStatus.BAD_REQUEST, msg);
         }
 
         Publication publication = catalog.getPublication(publicationCode);
         if (publication == null) {
-            String msg = telemetryService.eventPublicationSubmittedWithInvalidPublicationCode(publicationCode);
+            String msg = telemetryService.eventPublicationRejectedDueToInvalidPublicationCode(inflightEvent);
             throw new BrokerException(HttpStatus.BAD_REQUEST, msg);
         }
 
         if (! publication.isActive()) {
-            String msg = telemetryService.eventPublicationSubmittedOnInactivePublication(publicationCode);
+            String msg = telemetryService.eventPublicationRejectedDueToInactivePublication(inflightEvent);
             throw new BrokerException(HttpStatus.BAD_REQUEST, msg);
         }
 
         String eventTypeCode = publication.getEventTypeCode();
-        EventType eventType = catalog.getEventTypeOrThrowException(eventTypeCode);
-        inflightEvent.setEventTypeCode(eventTypeCode);
+        inflightEvent.setEventTypeCode(eventTypeCode);  // *** CAUTION ***: side effect here !
 
-        telemetryService.beginOfPublication(publicationCode, eventTypeCode);
-        try {
-            telemetryService.eventPublicationAttempted(inflightEvent);
-
-            Producer<InflightEvent> producer = getPulsarProducer(eventTypeCode);
-
-            producer.send(inflightEvent);
-
-            telemetryService.eventPublicationSucceeded(inflightEvent);
-
-        } catch (Exception ex) {
-            telemetryService.eventPublicationFailed(inflightEvent);
-
-        } finally {
-            telemetryService.endOfPublication(publicationCode, eventTypeCode, publicationStart);
-            LOGGER.debug("Returning the event {}", inflightEvent);
-            return inflightEvent;
+        EventType eventType = catalog.getEventType(eventTypeCode);
+        if (eventType == null) {
+            String msg = telemetryService.eventPublicationRejectedDueToInvalidEventTypeCode(inflightEvent);
+            throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg);   // It's an internal error, not a client error / bad request (the client does not provide the event type code) !
         }
+
+        return true; // true means the caller should continue its code flow
     }
 
     private synchronized Producer<InflightEvent> getPulsarProducer(String eventTypeCode) {

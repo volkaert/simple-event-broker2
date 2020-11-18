@@ -128,7 +128,10 @@ public class SubscriptionManagerService {
 
     // *** NEVER LET AN EXCEPTION BE RAISED/THROWN BY THIS OPERATION !!! ***
     private void handlePulsarMessageAndAck(Consumer<InflightEvent> consumer, Message<InflightEvent> message) {
+        Instant deliveryStart = Instant.now();
+
         InflightEvent inflightEvent = null;
+
         try {
             LOGGER.debug("Message received from Pulsar. Message is {}.", new String(message.getData()));
 
@@ -137,6 +140,8 @@ public class SubscriptionManagerService {
             String subscriptionCode = consumer.getSubscription();
             inflightEvent.setSubscriptionCode(subscriptionCode);
 
+            telemetryService.eventDeliveryRequested(inflightEvent);
+
             // Strange: message.getRedeliveryCount() is always 0 !!!
             LOGGER.warn("********** message.getRedeliveryCount() is always 0 !!! **********: {}", message.getRedeliveryCount());
             inflightEvent.setRedelivered(message.getRedeliveryCount() >= 1);
@@ -144,43 +149,12 @@ public class SubscriptionManagerService {
 
             LOGGER.debug("Event received from Pulsar. Event is {}.", inflightEvent.cloneWithoutSensitiveData());
 
-            Instant now = Instant.now();
-            boolean eventExpired = now.isAfter(inflightEvent.getExpirationDate());
-            if (eventExpired) {
-                LOGGER.warn("Event expired. Event is {}.", inflightEvent.toShortLog());
-                LOGGER.warn("Ack (due to expired event) for message {}. Event is {}.", message.getMessageId(), inflightEvent.toShortLog());
-                consumer.acknowledge(message);
-                recordEventInDLQ(inflightEvent);
+            boolean shouldContinue = checkConditionsForEventDeliveryAreMetOrAbort(inflightEvent, consumer, message, deliveryStart);
+            if (! shouldContinue) {
                 return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
             }
 
-            Subscription subscription = catalog.getSubscriptionOrThrowException(subscriptionCode);
-            if (! subscription.isActive()) {
-                LOGGER.warn("Inactive subscription {}. Event is {}.", subscriptionCode, inflightEvent.toShortLog());
-                LOGGER.warn("Ack (due to inactive subscription) for message {}. Event is {}.", message.getMessageId(), inflightEvent.toShortLog());
-                consumer.acknowledge(message);
-                recordEventInDLQ(inflightEvent);
-                return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
-            }
-
-            String eventTypeCode = subscription.getEventTypeCode();
-            EventType eventType = catalog.getEventTypeOrThrowException(eventTypeCode);
-            if (! eventType.isActive()) {
-                LOGGER.warn("Inactive event type {}. Event is {}.", eventTypeCode, inflightEvent.toShortLog());
-                LOGGER.warn("Ack (due to inactive event type) for message {}. Event is {}.", message.getMessageId(), inflightEvent.toShortLog());
-                consumer.acknowledge(message);
-                recordEventInDLQ(inflightEvent);
-                return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
-            }
-
-            boolean channelOk = subscription.getChannel() == null || subscription.getChannel().equalsIgnoreCase(inflightEvent.getChannel());
-            if (! channelOk) {
-                LOGGER.warn("Not matching channel {}. Event is {}", inflightEvent.getChannel(), inflightEvent.toShortLog());
-                LOGGER.warn("Ack (due to not matching channel) for message {}. Event is {}.", message.getMessageId(), inflightEvent.toShortLog());
-                consumer.acknowledge(message);
-                // DO NOT recordEventInDLQ(inflightEvent) for an unmatched channel !
-                return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
-            }
+            Subscription subscription = catalog.getSubscription(subscriptionCode);
 
             inflightEvent.setWebhookUrl(subscription.getWebhookUrl());
             inflightEvent.setWebhookContentType(subscription.getWebhookContentType());
@@ -191,6 +165,7 @@ public class SubscriptionManagerService {
             inflightEvent.setAuthScope(subscription.getAuthScope());
             inflightEvent.setSecret(subscription.getSecret());
 
+            telemetryService.eventDeliveryAttempted(inflightEvent);
             try {
                 inflightEvent = callSubscriptionAdapter(inflightEvent);
             } catch (Exception ex) {
@@ -198,8 +173,7 @@ public class SubscriptionManagerService {
                 LOGGER.warn("Negative ack (due to exception while calling the Subscription Adapter) for message {}. Event is {}.",
                         message.getMessageId(), inflightEvent.toShortLog());
                 consumer.negativeAcknowledge(message);
-                telemetryService.registerFailedDeliveryAttempt(
-                        inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
+                telemetryService.eventDeliveryFailed(inflightEvent, ex, deliveryStart);
                 return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
             }
 
@@ -207,59 +181,12 @@ public class SubscriptionManagerService {
                     inflightEvent.isWebhookReadTimeoutErrorOccurred() ||
                     inflightEvent.isWebhookServer5xxErrorOccurred() ||
                     inflightEvent.isWebhookClient4xxErrorOccurred()) {
-
-                boolean eventExpiredDueToTimeToLiveForWebhookError = false;
-                String eventExpirationReason = null;
-
-                if (inflightEvent.isWebhookConnectionErrorOccurred()) {
-                    eventExpiredDueToTimeToLiveForWebhookError = isEventExpiredDueToTimeToLiveForWebhookError(inflightEvent, now,
-                            config.getDefaultTimeToLiveInSecondsForWebhookConnectionError(),
-                            subscription.getTimeToLiveInSecondsForWebhookConnectionError());
-                    eventExpirationReason = "connection";
+                try {
+                    handleWebhookErrorOccurred(inflightEvent, consumer, message, deliveryStart, subscription);
+                } catch (Exception ex) {
+                    LOGGER.error("Error while handling a webhook error", ex);
                 }
-                else if (inflightEvent.isWebhookReadTimeoutErrorOccurred()) {
-                    eventExpiredDueToTimeToLiveForWebhookError = isEventExpiredDueToTimeToLiveForWebhookError(inflightEvent, now,
-                            config.getDefaultTimeToLiveInSecondsForWebhookReadTimeoutError(),
-                            subscription.getTimeToLiveInSecondsForWebhookReadTimeoutError());
-                    eventExpirationReason = "read timeout";
-                }
-                else if (inflightEvent.isWebhookServer5xxErrorOccurred()) {
-                    eventExpiredDueToTimeToLiveForWebhookError = isEventExpiredDueToTimeToLiveForWebhookError(inflightEvent, now,
-                            config.getDefaultTimeToLiveInSecondsForWebhookServer5xxError(),
-                            subscription.getTimeToLiveInSecondsForWebhookServer5xxError());
-                    eventExpirationReason = "server 5xx";
-                }
-                else if (inflightEvent.isWebhookClient4xxErrorOccurred()) {
-                    if (inflightEvent.getWebhookHttpStatus() == HttpStatus.UNAUTHORIZED.value() ||
-                            inflightEvent.getWebhookHttpStatus() == HttpStatus.FORBIDDEN.value()) {
-                        eventExpiredDueToTimeToLiveForWebhookError = isEventExpiredDueToTimeToLiveForWebhookError(inflightEvent, now,
-                                config.getDefaultTimeToLiveInSecondsForWebhookAuth401Or403Error(),
-                                subscription.getTimeToLiveInSecondsForWebhookAuth401Or403Error());
-                        eventExpirationReason = "auth 401 or 403";
-                    }
-                    else {
-                        eventExpiredDueToTimeToLiveForWebhookError = isEventExpiredDueToTimeToLiveForWebhookError(inflightEvent, now,
-                                config.getDefaultTimeToLiveInSecondsForWebhookClient4xxError(),
-                                subscription.getTimeToLiveInSecondsForWebhookClient4xxError());
-                        eventExpirationReason = "client 4xx";
-                    }
-                }
-
-                if (eventExpiredDueToTimeToLiveForWebhookError) {
-                    LOGGER.warn("Event expired before delivery due to time to live expiration because of a webhook {} error. Event is {}.",
-                            eventExpirationReason, inflightEvent.toShortLog());
-                    LOGGER.warn("Ack (due to expired event) for message {}. Event is {}.", message.getMessageId(), inflightEvent.toShortLog());
-                    consumer.acknowledge(message);
-                    recordEventInDLQ(inflightEvent);
-                }
-                else {
-                    LOGGER.warn("Negative ack (due to webhook error) for message {}. Event is {}.",
-                            message.getMessageId(), inflightEvent.toShortLog());
-                    consumer.negativeAcknowledge(message);
-                }
-
-                telemetryService.registerFailedDeliveryAttempt(
-                        inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
+                telemetryService.eventDeliveryFailed(inflightEvent, null, deliveryStart);
                 return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
             }
 
@@ -270,27 +197,154 @@ public class SubscriptionManagerService {
                 LOGGER.warn("Negative ack (due to unsuccessful http status {} returned by the webhook) for message {}. Event is {}.",
                         inflightEvent.getWebhookHttpStatus(), message.getMessageId(), inflightEvent.toShortLog());
                 consumer.negativeAcknowledge(message);
-                telemetryService.registerFailedDeliveryAttempt(
-                        inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
+                telemetryService.eventDeliveryFailed(inflightEvent, null, deliveryStart);
                 return; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
             }
 
             // If we reached this line, everything seems fine, so we can ack the message
             LOGGER.debug("Ack for message {}. Event is {}.", message.getMessageId(), inflightEvent.toShortLog());
-            consumer.acknowledge(message);
-            telemetryService.registerSuccessfulDelivery(
-                    inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
+            try {
+                consumer.acknowledge(message);
+            } catch (PulsarClientException ex) {
+                LOGGER.error("Error while acknowledging Pulsar message", ex);
+            }
+            telemetryService.eventDeliverySucceeded(inflightEvent, deliveryStart);
 
-        } catch (Exception ex) {
+        } catch (Exception ex) {    // a global catch is mandatory because no exception should be raised/thrown by this operation !
             LOGGER.error("Error while handling Pulsar message. Message id is {}. Event is {}", (message != null ?
                     message.getMessageId() : "null"), (inflightEvent != null ? inflightEvent.toShortLog() : "null"), ex);
             LOGGER.warn("Negative ack (due to exception) for message {}. Event is {}.", (message != null ?
                     message.getMessageId() : "null"), (inflightEvent != null ? inflightEvent.toShortLog() : "null"));
             consumer.negativeAcknowledge(message);
             if (inflightEvent != null) {
-                telemetryService.registerFailedDeliveryAttempt(
-                        inflightEvent.getSubscriptionCode(), inflightEvent.getEventTypeCode(), inflightEvent.getPublicationCode());
+                telemetryService.eventDeliveryFailed(inflightEvent, null, deliveryStart);
             }
+        }
+    }
+
+    private boolean checkConditionsForEventDeliveryAreMetOrAbort(InflightEvent inflightEvent, Consumer<InflightEvent> consumer,
+                                                                 Message<InflightEvent> message, Instant deliveryStart) {
+        String subscriptionCode = inflightEvent.getSubscriptionCode();
+        boolean eventExpired = deliveryStart.isAfter(inflightEvent.getExpirationDate());
+        if (eventExpired) {
+            telemetryService.eventDeliveryAbortedDueToExpiredEvent(inflightEvent);
+            LOGGER.warn("Ack (due to expired event) for message {}. Event is {}.", message.getMessageId(), inflightEvent.toShortLog());
+            try {
+                consumer.acknowledge(message);
+            } catch (PulsarClientException ex) {
+                LOGGER.error("Error while acknowledging Pulsar message", ex);
+            }
+            recordEventInDLQ(inflightEvent);
+            return false; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
+        }
+
+        Subscription subscription = catalog.getSubscription(subscriptionCode);
+        if (subscription == null) {
+            String msg = telemetryService.eventDeliveryAbortedDueToInvalidSubscriptionCode(inflightEvent);
+            throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg);
+        }
+
+        if (! subscription.isActive()) {
+            telemetryService.eventDeliveryAbortedDueToInactiveSubscription(inflightEvent);
+            LOGGER.warn("Ack (due to inactive subscription) for message {}. Event is {}.", message.getMessageId(), inflightEvent.toShortLog());
+            try {
+                consumer.acknowledge(message);
+            } catch (PulsarClientException ex) {
+                LOGGER.error("Error while acknowledging Pulsar message", ex);
+            }
+            recordEventInDLQ(inflightEvent);
+            return false; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
+        }
+
+        String eventTypeCode = subscription.getEventTypeCode();
+        EventType eventType = catalog.getEventType(eventTypeCode);
+        if (eventType == null) {
+            String msg = telemetryService.eventDeliveryAbortedDueToInvalidEventTypeCode(inflightEvent);
+            throw new BrokerException(HttpStatus.INTERNAL_SERVER_ERROR, msg);
+        }
+
+        if (! eventType.isActive()) {
+            telemetryService.eventDeliveryAbortedDueToInactiveEventType(inflightEvent);
+            LOGGER.warn("Ack (due to inactive event type) for message {}. Event is {}.", message.getMessageId(), inflightEvent.toShortLog());
+            try {
+                consumer.acknowledge(message);
+            } catch (PulsarClientException ex) {
+                LOGGER.error("Error while acknowledging Pulsar message", ex);
+            }
+            recordEventInDLQ(inflightEvent);
+            return false; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
+        }
+
+        boolean channelOk = subscription.getChannel() == null || subscription.getChannel().equalsIgnoreCase(inflightEvent.getChannel());
+        if (! channelOk) {
+            telemetryService.eventDeliveryAbortedDueToNotMatchingChannel(inflightEvent);
+            LOGGER.warn("Ack (due to not matching channel) for message {}. Event is {}.", message.getMessageId(), inflightEvent.toShortLog());
+            try {
+                consumer.acknowledge(message);
+            } catch (PulsarClientException ex) {
+                LOGGER.error("Error while acknowledging Pulsar message", ex);
+            }
+            // DO NOT recordEventInDLQ(inflightEvent) for an unmatched channel !
+            return false; // *** PAY ATTENTION, THERE IS A RETURN HERE !!! ***
+        }
+
+        return true; // true means the caller should continue its code flow
+    }
+
+    private void handleWebhookErrorOccurred(InflightEvent inflightEvent, Consumer<InflightEvent> consumer,
+                                               Message<InflightEvent> message, Instant deliveryStart, Subscription subscription) {
+        boolean eventExpiredDueToTimeToLiveForWebhookError = false;
+        String eventExpirationReason = null;
+
+        if (inflightEvent.isWebhookConnectionErrorOccurred()) {
+            eventExpiredDueToTimeToLiveForWebhookError = isEventExpiredDueToTimeToLiveForWebhookError(inflightEvent, deliveryStart,
+                    config.getDefaultTimeToLiveInSecondsForWebhookConnectionError(),
+                    subscription.getTimeToLiveInSecondsForWebhookConnectionError());
+            eventExpirationReason = "connection";
+        }
+        else if (inflightEvent.isWebhookReadTimeoutErrorOccurred()) {
+            eventExpiredDueToTimeToLiveForWebhookError = isEventExpiredDueToTimeToLiveForWebhookError(inflightEvent, deliveryStart,
+                    config.getDefaultTimeToLiveInSecondsForWebhookReadTimeoutError(),
+                    subscription.getTimeToLiveInSecondsForWebhookReadTimeoutError());
+            eventExpirationReason = "read timeout";
+        }
+        else if (inflightEvent.isWebhookServer5xxErrorOccurred()) {
+            eventExpiredDueToTimeToLiveForWebhookError = isEventExpiredDueToTimeToLiveForWebhookError(inflightEvent, deliveryStart,
+                    config.getDefaultTimeToLiveInSecondsForWebhookServer5xxError(),
+                    subscription.getTimeToLiveInSecondsForWebhookServer5xxError());
+            eventExpirationReason = "server 5xx";
+        }
+        else if (inflightEvent.isWebhookClient4xxErrorOccurred()) {
+            if (inflightEvent.getWebhookHttpStatus() == HttpStatus.UNAUTHORIZED.value() ||
+                    inflightEvent.getWebhookHttpStatus() == HttpStatus.FORBIDDEN.value()) {
+                eventExpiredDueToTimeToLiveForWebhookError = isEventExpiredDueToTimeToLiveForWebhookError(inflightEvent, deliveryStart,
+                        config.getDefaultTimeToLiveInSecondsForWebhookAuth401Or403Error(),
+                        subscription.getTimeToLiveInSecondsForWebhookAuth401Or403Error());
+                eventExpirationReason = "auth 401 or 403";
+            }
+            else {
+                eventExpiredDueToTimeToLiveForWebhookError = isEventExpiredDueToTimeToLiveForWebhookError(inflightEvent, deliveryStart,
+                        config.getDefaultTimeToLiveInSecondsForWebhookClient4xxError(),
+                        subscription.getTimeToLiveInSecondsForWebhookClient4xxError());
+                eventExpirationReason = "client 4xx";
+            }
+        }
+
+        if (eventExpiredDueToTimeToLiveForWebhookError) {
+            LOGGER.warn("Event expired before delivery due to time to live expiration because of a webhook {} error. Event is {}.",
+                    eventExpirationReason, inflightEvent.toShortLog());
+            LOGGER.warn("Ack (due to expired event) for message {}. Event is {}.", message.getMessageId(), inflightEvent.toShortLog());
+            try {
+                consumer.acknowledge(message);
+            } catch (PulsarClientException ex) {
+                LOGGER.error("Error while acknowledging Pulsar message", ex);
+            }
+            recordEventInDLQ(inflightEvent);
+        }
+        else {
+            LOGGER.warn("Negative ack (due to webhook error) for message {}. Event is {}.",
+                    message.getMessageId(), inflightEvent.toShortLog());
+            consumer.negativeAcknowledge(message);
         }
     }
 

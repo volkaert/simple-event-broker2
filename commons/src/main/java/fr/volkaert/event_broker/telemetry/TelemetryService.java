@@ -27,225 +27,455 @@ public class TelemetryService {
 
     private final Map<String, AtomicLong> pendingPublicationGauges = new ConcurrentHashMap<>();
     //private final Map<String, AtomicLong> pendingDeliveriesGauges = new ConcurrentHashMap<>();
-;
 
-    public synchronized String eventPublicationSubmitted(InflightEvent inflightEvent) {
+
+    // PUBLICATION /////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    public synchronized String eventPublicationRequested(InflightEvent event) {
         String msg = "";
         try {
-            msg = String.format("Event publication submitted. Event is %s.", inflightEvent);
+            msg = String.format("Event publication requested. Event is %s.", event);
             LOGGER.debug(msg);
         } catch (Exception ex) {
-            LOGGER.error("Error while recording log for eventPublicationSubmitted", ex);
+            LOGGER.error("Error while recording log for eventPublicationRequested", ex);
+        }
+        try {
+            Counter counter1 = meterRegistry.counter("event_publications_requested_total");
+            counter1.increment();
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording metrics for eventPublicationRequested", ex);
         }
         return msg;
     }
 
-    public synchronized String eventPublicationSubmittedWithMissingPublicationCode() {
+    public synchronized String eventPublicationRejectedDueToMissingPublicationCode(InflightEvent event) {
         String msg = "";
         try {
-            msg = String.format("Publication code is missing");
+            msg = String.format("Event publication rejected due to missing publication code. Event is %s.", event.toShortLog());
             LOGGER.error(msg);
         } catch (Exception ex) {
-            LOGGER.error("Error while recording log for eventPublicationSubmittedWithMissingPublicationCode", ex);
+            LOGGER.error("Error while recording log for eventPublicationRejectedDueToMissingPublicationCode", ex);
         }
         try {
-            Counter counter = meterRegistry.counter("publications_with_missing_publication_code_total");
-            counter.increment();
+            Counter counter1 = meterRegistry.counter("event_publications_rejected_total");
+            counter1.increment();
+            Counter counter2 = meterRegistry.counter("event_publications_rejected_due_to_missing_publication_code_total");
+            counter2.increment();
         } catch (Exception ex) {
-            LOGGER.error("Error while recording metrics for eventPublicationSubmittedWithMissingPublicationCode", ex);
+            LOGGER.error("Error while recording metrics for eventPublicationRejectedDueToMissingPublicationCode", ex);
         }
         return msg;
     }
 
-    public synchronized String eventPublicationSubmittedWithInvalidPublicationCode(String publicationCode) {
+    public synchronized String eventPublicationRejectedDueToInvalidPublicationCode(InflightEvent event) {
         String msg = "";
         try {
-            msg = String.format("Invalid publication code '%s'", publicationCode);
+            String publicationCode = event.getPublicationCode();
+            msg = String.format("Event publication rejected due to invalid publication code '%s'. Event is %s.", publicationCode, event.toShortLog());
             LOGGER.error(msg);
         } catch (Exception ex) {
-            LOGGER.error("Error while recording log for eventPublicationSubmittedWithInvalidPublicationCode", ex);
+            LOGGER.error("Error while recording log for eventPublicationRejectedDueToInvalidPublicationCode", ex);
         }
         try {
-            // do NOT use publicationCode as tag because in vase of an unknown publicationCode, its potential values are unbounded !
-            Counter counter = meterRegistry.counter("publications_with_invalid_publication_code_total");
-            counter.increment();
+            Counter counter1 = meterRegistry.counter("event_publications_rejected_total");
+            counter1.increment();
+            // do NOT use publicationCode as tag because in case of an unknown publicationCode, its potential values are unbounded !
+            Counter counter2 = meterRegistry.counter("event_publications_rejected_due_to_invalid_publication_code_total");
+            counter2.increment();
         } catch (Exception ex) {
-            LOGGER.error("Error while recording metrics for eventPublicationSubmittedWithInvalidPublicationCode", ex);
+            LOGGER.error("Error while recording metrics for eventPublicationRejectedDueToInvalidPublicationCode", ex);
         }
         return msg;
     }
 
-    public synchronized String eventPublicationSubmittedOnInactivePublication(String publicationCode) {
+    public synchronized String eventPublicationRejectedDueToInactivePublication(InflightEvent event) {
         String msg = "";
         try {
-            msg = String.format("Inactive publication '%s'", publicationCode);
+            String publicationCode = event.getPublicationCode();
+            msg = String.format("Inactive publication '%s'. Event is %s.", publicationCode, event.toShortLog());
             LOGGER.warn(msg); // WARNING and not ERROR !!
         } catch (Exception ex) {
-            LOGGER.error("Error while recording log for eventPublicationSubmittedOnInactivePublication", ex);
+            LOGGER.error("Error while recording log for eventPublicationRejectedDueToInactivePublication", ex);
         }
         try {
-            // do NOT use publicationCode as tag because in vase of an unknown publicationCode, its potential values are unbounded !
-            Counter counter = meterRegistry.counter("publications_on_inactive_publication_total");
-            counter.increment();
+            String publicationCode = event.getPublicationCode();
+            Counter counter1 = meterRegistry.counter("event_publications_rejected_total");
+            counter1.increment();
+            Counter counter2 = meterRegistry.counter("event_publications_rejected_due_to_inactive_publication_total",
+                    Tags.of("publication_code", publicationCode));
+            counter2.increment();
         } catch (Exception ex) {
-            LOGGER.error("Error while recording metrics for eventPublicationSubmittedOnInactivePublication", ex);
+            LOGGER.error("Error while recording metrics for eventPublicationRejectedDueToInactivePublication", ex);
         }
         return msg;
     }
 
-    public synchronized Instant beginOfPublication(String publicationCode, String eventTypeCode) {
+    public synchronized String eventPublicationRejectedDueToInvalidEventTypeCode(InflightEvent event) {
+        String msg = "";
         try {
-            Counter publicationsCounter = meterRegistry.counter("publications_total",
+            String eventTypeCode = event.getEventTypeCode();
+            msg = String.format("Event publication rejected due to invalid event type code '%s'. Event is %s.", eventTypeCode, event.toShortLog());
+            LOGGER.error(msg);
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventPublicationRejectedDueToInvalidEventTypeCode", ex);
+        }
+        try {
+            Counter counter1 = meterRegistry.counter("event_publications_rejected_total");
+            counter1.increment();
+            // do NOT use eventTypeCode as tag because in case of an unknown eventTypeCode, its potential values are unbounded !
+            Counter counter2 = meterRegistry.counter("event_publications_rejected_due_to_invalid_event_type_code_total");
+            counter2.increment();
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording metrics for eventPublicationRejectedDueToInvalidEventTypeCode", ex);
+        }
+        return msg;
+    }
+
+    public synchronized String eventPublicationAttempted(InflightEvent event) {
+        String msg = "";
+        try {
+            msg = String.format("Event publication attempted. Event is %s.", event);
+            LOGGER.debug(msg);
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventPublicationAttempted", ex);
+        }
+        try {
+            String publicationCode = event.getPublicationCode();
+            String eventTypeCode = event.getEventTypeCode();
+
+            Counter counter1 = meterRegistry.counter("event_publications_attempted_total",
                     Tags.of("publication_code", publicationCode, "event_type_code", eventTypeCode));
-            publicationsCounter.increment();
+            counter1.increment();
 
             AtomicLong pendingPublications = pendingPublicationGauges.computeIfAbsent(eventTypeCode + "/" + publicationCode, x -> {
-                return meterRegistry.gauge("pending_publications",
+                return meterRegistry.gauge("pending_event_publications",
                         Tags.of("publication_code", publicationCode, "event_type_code", eventTypeCode),
                         new AtomicLong(0));
             });
             pendingPublications.incrementAndGet();
-
-            Instant publicationStart = Instant.now();
-            return publicationStart;
         } catch (Exception ex) {
-            LOGGER.error("Error while registering metric", ex);
-            return null;
+            LOGGER.error("Error while recording metric for eventPublicationAttempted", ex);
         }
+        return msg;
     }
 
-    public synchronized void endOfPublication(String publicationCode, String eventTypeCode, Instant publicationStart) {
+    public synchronized String eventPublicationSucceeded(InflightEvent event, Instant publicationStart) {
+        String msg = "";
         try {
+            msg = String.format("Event publication succeeded. Event is %s.", event.toShortLog());
+            LOGGER.debug(msg);
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventPublicationSucceeded", ex);
+        }
+        try {
+            String publicationCode = event.getPublicationCode();
+            String eventTypeCode = event.getEventTypeCode();
+
+            Counter counter1 = meterRegistry.counter("event_publications_succeeded_total",
+                    Tags.of("publication_code", publicationCode, "event_type_code", eventTypeCode));
+            counter1.increment();
+
             AtomicLong pendingPublications = pendingPublicationGauges.computeIfAbsent(eventTypeCode + "/" + publicationCode, x -> {
-                return meterRegistry.gauge("pending_publications",
+                return meterRegistry.gauge("pending_event_publications",
                         Tags.of("publication_code", publicationCode, "event_type_code" , eventTypeCode),
                         new AtomicLong(0));
             });
             pendingPublications.decrementAndGet();
 
             Instant publicationEnd = Instant.now();
-            Timer publicationTimer = meterRegistry.timer("publication_duration",
+            Timer publicationTimer = meterRegistry.timer("event_publication_duration",
                     Tags.of("publication_code", publicationCode, "event_type_code", eventTypeCode));
             publicationTimer.record(Duration.between(publicationStart, publicationEnd).toMillis(), TimeUnit.MILLISECONDS);
         } catch (Exception ex) {
-            LOGGER.error("Error while registering metric", ex);
-        }
-    }
-
-    public synchronized String eventPublicationAttempted(InflightEvent inflightEvent) {
-        String msg = "";
-        try {
-            msg = String.format("Event publication attempted. Event is %s.", inflightEvent.toShortLog());
-            LOGGER.debug(msg);
-        } catch (Exception ex) {
-            LOGGER.error("Error while recording log for eventPublicationAttempted", ex);
+            LOGGER.error("Error while recording metric for eventPublicationSucceeded", ex);
         }
         return msg;
     }
 
-    public synchronized String eventPublicationSucceeded(InflightEvent inflightEvent) {
+    public synchronized String eventPublicationFailed(InflightEvent event, Exception exception, Instant publicationStart) {
         String msg = "";
         try {
-            msg = String.format("Event publication succeeded. Event is %s.", inflightEvent.toShortLog());
-            LOGGER.debug(msg);
-        } catch (Exception ex) {
-            LOGGER.error("Error while recording log for eventPublicationSucceeded", ex);
-        }
-        return msg;
-    }
-
-    public synchronized String eventPublicationFailed(InflightEvent inflightEvent) {
-        String msg = "";
-        try {
-            msg = String.format("Event publication failed. Event is %s.", inflightEvent.toShortLog());
-            LOGGER.debug(msg);
+            msg = String.format("Event publication failed. Exception is `%s`. Event is %s.",
+                    (exception != null ? exception.getMessage() : ""),  event.toShortLog());
+            LOGGER.error(msg, exception);
         } catch (Exception ex) {
             LOGGER.error("Error while recording log for eventPublicationFailed", ex);
         }
+        try {
+            String publicationCode = event.getPublicationCode();
+            String eventTypeCode = event.getEventTypeCode();
+
+            Counter counter1 = meterRegistry.counter("event_publications_failed_total",
+                    Tags.of("publication_code", publicationCode, "event_type_code", eventTypeCode));
+            counter1.increment();
+
+            AtomicLong pendingPublications = pendingPublicationGauges.computeIfAbsent(eventTypeCode + "/" + publicationCode, x -> {
+                return meterRegistry.gauge("pending_event_publications",
+                        Tags.of("publication_code", publicationCode, "event_type_code" , eventTypeCode),
+                        new AtomicLong(0));
+            });
+            pendingPublications.decrementAndGet();
+
+            Instant publicationEnd = Instant.now();
+            Timer publicationTimer = meterRegistry.timer("event_publication_duration",
+                    Tags.of("publication_code", publicationCode, "event_type_code", eventTypeCode));
+            publicationTimer.record(Duration.between(publicationStart, publicationEnd).toMillis(), TimeUnit.MILLISECONDS);
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording metric for eventPublicationFailed", ex);
+        }
         return msg;
     }
 
 
-    /*
-    public synchronized Instant registerBeginOfDelivery(String subscriptionCode, String eventTypeCode, String publicationCode) {
-        try {
-            AtomicLong pendingDeliveries = pendingDeliveriesGauges.computeIfAbsent(eventTypeCode + "/" + subscriptionCode, x -> {
-                return meterRegistry.gauge("pending_deliveries",
-                        Tags.of("subscription_code", subscriptionCode, "event_type_code" , eventTypeCode, "publication_code", publicationCode),
-                        new AtomicLong(0));
-            });
-            pendingDeliveries.incrementAndGet();
+    // DELIVERY ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            Instant deliveryStart = Instant.now();
-            return deliveryStart;
+
+    public synchronized String eventDeliveryRequested(InflightEvent event) {
+        String msg = "";
+        try {
+            msg = String.format("Event delivery requested. Event is %s.", event);
+            LOGGER.debug(msg);
         } catch (Exception ex) {
-            LOGGER.error("Error while registering metric", ex);
-            return null;
+            LOGGER.error("Error while recording log for eventDeliveryRequested", ex);
         }
-    }
-    */
-
-    public synchronized void registerSuccessfulDelivery(String subscriptionCode, String eventTypeCode, String publicationCode) {
         try {
-            Counter successfulDeliveriesCounter = meterRegistry.counter("successful_deliveries_total",
+            String subscriptionCode = event.getSubscriptionCode();
+            String eventTypeCode = event.getEventTypeCode();
+            String publicationCode = event.getPublicationCode();
+            Counter counter1 = meterRegistry.counter("event_deliveries_requested_total",
                     Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
-            successfulDeliveriesCounter.increment();
+            counter1.increment();
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording metrics for eventDeliveryRequested", ex);
+        }
+        return msg;
+    }
 
-            Counter deliveryAttemptsCounter = meterRegistry.counter("delivery_attempts_total",
+    public synchronized String eventDeliveryAbortedDueToExpiredEvent(InflightEvent event) {
+        String msg = "";
+        try {
+            msg = String.format("Event delivery aborted due to expired event. Event is %s.", event.toShortLog());
+            LOGGER.warn(msg);   // WARN and not ERROR !
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventDeliveryAbortedDueToExpiredEvent", ex);
+        }
+        try {
+            String subscriptionCode = event.getSubscriptionCode();
+            String eventTypeCode = event.getEventTypeCode();
+            String publicationCode = event.getPublicationCode();
+            Counter counter1 = meterRegistry.counter("event_deliveries_aborted_total",
                     Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
-            deliveryAttemptsCounter.increment();
+            counter1.increment();
+            Counter counter2 = meterRegistry.counter("event_deliveries_aborted_due_to_expired_event_total",
+                    Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
+            counter2.increment();
         } catch (Exception ex) {
-            LOGGER.error("Error while registering metric", ex);
+            LOGGER.error("Error while recording metrics for eventDeliveryAbortedDueToExpiredEvent", ex);
         }
+        return msg;
     }
 
-    /*
-    public synchronized void registerFailedDelivery(String subscriptionCode, String eventTypeCode, String publicationCode) {
+    public synchronized String eventDeliveryAbortedDueToInvalidSubscriptionCode(InflightEvent event) {
+        String msg = "";
         try {
-            Counter failedDeliveriesCounter = meterRegistry.counter("failed_deliveries_total",
-                    Tags.of("subscription_code", subscriptionCode, "event_type_code" , eventTypeCode, "publication_code", publicationCode));
-            failedDeliveriesCounter.increment();
+            String subscriptionCode = event.getSubscriptionCode();
+            msg = String.format("Event delivery aborted due to invalid subscription code '%s'. Event is %s.", subscriptionCode, event.toShortLog());
+            LOGGER.error(msg);
         } catch (Exception ex) {
-            LOGGER.error("Error while registering metric", ex);
+            LOGGER.error("Error while recording log for eventDeliveryAbortedDueToInvalidSubscriptionCode", ex);
         }
-    }
-    */
-
-    public synchronized void registerFailedDeliveryAttempt(String subscriptionCode, String eventTypeCode, String publicationCode) {
         try {
-            Counter failedDeliveriesAttemptsCounter = meterRegistry.counter("failed_deliveries_attempts_total",
-                    Tags.of("subscription_code", subscriptionCode, "event_type_code" , eventTypeCode, "publication_code", publicationCode));
-            failedDeliveriesAttemptsCounter.increment();
-
-            Counter deliveryAttemptsCounter = meterRegistry.counter("delivery_attempts_total",
-                    Tags.of("subscription_code", subscriptionCode, "event_type_code" , eventTypeCode, "publication_code", publicationCode));
-            deliveryAttemptsCounter.increment();
+            String subscriptionCode = event.getSubscriptionCode();
+            String eventTypeCode = event.getEventTypeCode();
+            String publicationCode = event.getPublicationCode();
+            Counter counter1 = meterRegistry.counter("event_deliveries_aborted_total",
+                    Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
+            counter1.increment();
+            Counter counter2 = meterRegistry.counter("event_deliveries_aborted_due_to_invalid_subscription_code_total",
+                    Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
+            counter2.increment();
         } catch (Exception ex) {
-            LOGGER.error("Error while registering metric", ex);
+            LOGGER.error("Error while recording metrics for eventDeliveryAbortedDueToInvalidSubscriptionCode", ex);
         }
+        return msg;
     }
 
-    /*
-    public synchronized void registerEndOfDelivery(String subscriptionCode, String eventTypeCode, String publicationCode, Instant deliveryStart) {
+    public synchronized String eventDeliveryAbortedDueToInactiveSubscription(InflightEvent event) {
+        String msg = "";
         try {
-            AtomicLong pendingDeliveries = pendingDeliveriesGauges.computeIfAbsent(eventTypeCode + "/" + subscriptionCode, x -> {
-                return meterRegistry.gauge("pending_deliveries",
-                        Tags.of("subscription_code", subscriptionCode, "event_type_code" , eventTypeCode, "publication_code", publicationCode),
-                        new AtomicLong(0));
-            });
-            pendingDeliveries.decrementAndGet();
+            String subscriptionCode = event.getSubscriptionCode();
+            msg = String.format("Event delivery aborted due to inactive subscription '%s'. Event is %s.", subscriptionCode, event.toShortLog());
+            LOGGER.warn(msg);   // WARN and not ERROR !
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventDeliveryAbortedDueToInactiveSubscription", ex);
+        }
+        try {
+            String subscriptionCode = event.getSubscriptionCode();
+            String eventTypeCode = event.getEventTypeCode();
+            String publicationCode = event.getPublicationCode();
+            Counter counter1 = meterRegistry.counter("event_deliveries_aborted_total",
+                    Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
+            counter1.increment();
+            Counter counter2 = meterRegistry.counter("event_deliveries_aborted_due_to_inactive_subscription_total",
+                    Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
+            counter2.increment();
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording metrics for eventDeliveryAbortedDueToInactiveSubscription", ex);
+        }
+        return msg;
+    }
+
+    public synchronized String eventDeliveryAbortedDueToInvalidEventTypeCode(InflightEvent event) {
+        String msg = "";
+        try {
+            String eventTypeCode = event.getEventTypeCode();
+            msg = String.format("Event delivery aborted due to invalid event type code '%s'. Event is %s.", eventTypeCode, event.toShortLog());
+            LOGGER.error(msg);
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventDeliveryAbortedDueToInvalidEventTypeCode", ex);
+        }
+        try {
+            String subscriptionCode = event.getSubscriptionCode();
+            String eventTypeCode = event.getEventTypeCode();
+            String publicationCode = event.getPublicationCode();
+            Counter counter1 = meterRegistry.counter("event_deliveries_aborted_total",
+                    Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
+            counter1.increment();
+            Counter counter2 = meterRegistry.counter("event_deliveries_aborted_due_to_invalid_event_type_code_total",
+                    Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
+            counter2.increment();
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording metrics for eventDeliveryAbortedDueToInvalidEventTypeCode", ex);
+        }
+        return msg;
+    }
+
+    public synchronized String eventDeliveryAbortedDueToInactiveEventType(InflightEvent event) {
+        String msg = "";
+        try {
+            String eventTypeCode = event.getEventTypeCode();
+            msg = String.format("Event delivery aborted due to inactive event type '%s'. Event is %s.", eventTypeCode, event.toShortLog());
+            LOGGER.warn(msg);   // WARN and not ERROR !
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventDeliveryAbortedDueToInactiveEventType", ex);
+        }
+        try {
+            String subscriptionCode = event.getSubscriptionCode();
+            String eventTypeCode = event.getEventTypeCode();
+            String publicationCode = event.getPublicationCode();
+            Counter counter1 = meterRegistry.counter("event_deliveries_aborted_total",
+                    Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
+            counter1.increment();
+            Counter counter2 = meterRegistry.counter("event_deliveries_aborted_due_to_inactive_event_type_total",
+                    Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
+            counter2.increment();
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording metrics for eventDeliveryAbortedDueToInactiveEventType", ex);
+        }
+        return msg;
+    }
+
+    public synchronized String eventDeliveryAbortedDueToNotMatchingChannel(InflightEvent event) {
+        String msg = "";
+        try {
+            String channel = event.getChannel();
+            msg = String.format("Event delivery aborted due to not matching channel '%s'. Event is %s.", channel, event.toShortLog());
+            LOGGER.warn(msg);   // WARN and not ERROR !
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventDeliveryAbortedDueToNotMatchingChannel", ex);
+        }
+        try {
+            String subscriptionCode = event.getSubscriptionCode();
+            String eventTypeCode = event.getEventTypeCode();
+            String publicationCode = event.getPublicationCode();
+            Counter counter1 = meterRegistry.counter("event_deliveries_aborted_total",
+                    Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
+            counter1.increment();
+            Counter counter2 = meterRegistry.counter("event_deliveries_aborted_due_to_not_matching_channel_total",
+                    Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
+            counter2.increment();
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording metrics for eventDeliveryAbortedDueToNotMatchingChannel", ex);
+        }
+        return msg;
+    }
+
+    public synchronized String eventDeliveryAttempted(InflightEvent event) {
+        String msg = "";
+        try {
+            msg = String.format("Event delivery attempted. Event is %s.", event);
+            LOGGER.debug(msg);
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventDeliveryAttempted", ex);
+        }
+
+        try {
+            String subscriptionCode = event.getSubscriptionCode();
+            String eventTypeCode = event.getEventTypeCode();
+            String publicationCode = event.getPublicationCode();
+            Counter counter1 = meterRegistry.counter("event_deliveries_attempted_total",
+                    Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
+            counter1.increment();
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording metric for eventDeliveryAttempted", ex);
+        }
+
+        return msg;
+    }
+
+    public synchronized String eventDeliverySucceeded(InflightEvent event, Instant deliveryStart) {
+        String msg = "";
+        try {
+            msg = String.format("Event delivery succeeded. Event is %s.", event.toShortLog());
+            LOGGER.debug(msg);
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventDeliverySucceeded", ex);
+        }
+        try {
+            String subscriptionCode = event.getSubscriptionCode();
+            String eventTypeCode = event.getEventTypeCode();
+            String publicationCode = event.getPublicationCode();
+
+            Counter counter1 = meterRegistry.counter("event_deliveries_succeeded_total",
+                    Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
+            counter1.increment();
 
             Instant deliveryEnd = Instant.now();
-            Timer deliveryTimer = meterRegistry.timer("delivery_duration",
-                    Tags.of("subscription_code", subscriptionCode, "event_type_code" , eventTypeCode, "publication_code", publicationCode));
+            Timer deliveryTimer = meterRegistry.timer("event_delivery_duration",
+                    Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
             deliveryTimer.record(Duration.between(deliveryStart, deliveryEnd).toMillis(), TimeUnit.MILLISECONDS);
-
-            Counter deliveriesCounter = meterRegistry.counter("deliveries_total",
-                    Tags.of("subscription_code", subscriptionCode, "event_type_code" , eventTypeCode, "publication_code", publicationCode));
-            deliveriesCounter.increment();
         } catch (Exception ex) {
-            LOGGER.error("Error while registering metric", ex);
+            LOGGER.error("Error while recording metric for eventDeliverySucceeded", ex);
         }
+        return msg;
     }
-    */
+
+    public synchronized String eventDeliveryFailed(InflightEvent event, Exception exception, Instant deliveryStart) {
+        String msg = "";
+        try {
+            msg = String.format("Event delivery failed. Exception is `%s`. Event is %s.",
+                    (exception != null ? exception.getMessage() : ""),  event.toShortLog());
+            LOGGER.error(msg, exception);
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording log for eventDeliveryFailed", ex);
+        }
+        try {
+            String subscriptionCode = event.getSubscriptionCode();
+            String eventTypeCode = event.getEventTypeCode();
+            String publicationCode = event.getPublicationCode();
+
+            Counter counter1 = meterRegistry.counter("event_deliveries_failed_total",
+                    Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
+            counter1.increment();
+
+            Instant deliveryEnd = Instant.now();
+            Timer deliveryTimer = meterRegistry.timer("event_delivery_duration",
+                    Tags.of("subscription_code", subscriptionCode, "event_type_code", eventTypeCode, "publication_code", publicationCode));
+            deliveryTimer.record(Duration.between(deliveryStart, deliveryEnd).toMillis(), TimeUnit.MILLISECONDS);
+        } catch (Exception ex) {
+            LOGGER.error("Error while recording metric for eventDeliveryFailed", ex);
+        }
+        return msg;
+    }
 }
